@@ -799,26 +799,26 @@ function App() {
                 <div className={`tab ${currentPage === 'master-supportive' ? 'active' : ''}`} onClick={() => setCurrentPage('master-supportive')}>Supportive Document</div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ textTransform: 'uppercase' }}>
-                  Document Viewer: {currentPage.replace('master-', '').replace('-', ' ')}
-                </h4>
-                <div style={{ display: 'flex', gap: '10px' }}>
+              <div className="embed-header-row">
+                <div className="embed-header-title-area">
+                  <h4 className="embed-header-title">
+                    Document Viewer: {currentPage.replace('master-', '').replace('-', ' ')}
+                  </h4>
+                  <button className="card-config-btn header-gear-btn" onClick={() => handleOpenConfig(currentPage)}>⚙</button>
+                </div>
+                <div className="embed-header-controls">
                   <button 
                     className={`btn btn-secondary ${!isRealEmbedActive(currentPage) ? 'active' : ''}`}
                     onClick={() => handleToggleMode(currentPage, false)}
-                    style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                   >
                     {t[lang].mockDashboard}
                   </button>
                   <button 
                     className={`btn btn-secondary ${isRealEmbedActive(currentPage) ? 'active' : ''}`}
                     onClick={() => handleToggleMode(currentPage, true)}
-                    style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                   >
                     {t[lang].activeEmbed}
                   </button>
-                  <button className="card-config-btn" onClick={() => handleOpenConfig(currentPage)}>⚙</button>
                 </div>
               </div>
 
@@ -832,22 +832,31 @@ function App() {
               )}
 
               {isRealEmbedActive(currentPage) ? (
-                <div className="embed-container">
-                  {getEmbedUrl(currentPage) ? (
-                    <iframe 
-                      className="embed-iframe"
-                      src={getEmbedUrl(currentPage)} 
-                      title="Google Doc Embed"
-                    />
-                  ) : (
-                    <div className="embed-placeholder">
-                      <div className="embed-placeholder-icon">📭</div>
-                      <div className="embed-placeholder-title">{t[lang].noEmbedUrl}</div>
-                      <button className="btn btn-primary" onClick={() => handleOpenConfig(currentPage)}>
-                        Configure Embed Link
-                      </button>
+                <div>
+                  {getEmbedUrl(currentPage) && (
+                    <div className="mobile-only-flex-badge">
+                      <a href={getEmbedUrl(currentPage)} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+                        📂 {lang === 'th' ? 'เปิดเอกสารในแท็บใหม่' : 'Open in New Tab'} ↗
+                      </a>
                     </div>
                   )}
+                  <div className="embed-container">
+                    {getEmbedUrl(currentPage) ? (
+                      <iframe 
+                        className="embed-iframe"
+                        src={getEmbedUrl(currentPage)} 
+                        title="Google Doc Embed"
+                      />
+                    ) : (
+                      <div className="embed-placeholder">
+                        <div className="embed-placeholder-icon">📭</div>
+                        <div className="embed-placeholder-title">{t[lang].noEmbedUrl}</div>
+                        <button className="btn btn-primary" onClick={() => handleOpenConfig(currentPage)}>
+                          Configure Embed Link
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px', padding: '60px 40px', textAlign: 'center' }}>
@@ -1102,29 +1111,29 @@ function App() {
                 {/* Right Viewer Content */}
                 <div className="metabase-content" style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Controls Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                    <h4 style={{ margin: 0, textTransform: 'uppercase' }}>
-                      {selectedMetabaseTab === 'overall' && '📊 Overall KPI Dashboard'}
-                      {selectedMetabaseTab === 'hba1c' && '🧪 HbA1c Analysis'}
-                      {selectedMetabaseTab === 'ldl' && '🩸 LDL Monitoring'}
-                    </h4>
+                  <div className="embed-header-row">
+                    <div className="embed-header-title-area">
+                      <h4 className="embed-header-title">
+                        {selectedMetabaseTab === 'overall' && '📊 Overall KPI Dashboard'}
+                        {selectedMetabaseTab === 'hba1c' && '🧪 HbA1c Analysis'}
+                        {selectedMetabaseTab === 'ldl' && '🩸 LDL Monitoring'}
+                      </h4>
+                      <button className="card-config-btn header-gear-btn" onClick={() => handleOpenConfig('rlu_dashboard')}>⚙</button>
+                    </div>
                     
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div className="embed-header-controls">
                       <button 
                         className={`btn btn-secondary ${!isRealEmbedActive('rlu_dashboard') ? 'active' : ''}`}
                         onClick={() => handleToggleMode('rlu_dashboard', false)}
-                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                       >
                         {t[lang].mockDashboard}
                       </button>
                       <button 
                         className={`btn btn-secondary ${isRealEmbedActive('rlu_dashboard') ? 'active' : ''}`}
                         onClick={() => handleToggleMode('rlu_dashboard', true)}
-                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                       >
                         {t[lang].activeEmbed}
                       </button>
-                      <button className="card-config-btn" onClick={() => handleOpenConfig('rlu_dashboard')}>⚙</button>
                     </div>
                   </div>
 
