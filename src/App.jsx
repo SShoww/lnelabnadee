@@ -128,7 +128,7 @@ const DEFAULT_EMBEDS = {
   rlu_dashboard: 'https://metabase.example.com/public/dashboard/xyz123',
   quality_manual: 'https://docs.google.com/document/d/example-qm/preview',
   work_procedure: 'https://docs.google.com/document/d/example-wp/preview',
-  work_instruction: 'https://docs.google.com/document/d/example-wi/preview',
+  work_instruction: 'https://drive.google.com/file/d/1SB4jlVbT9xTqaAgic_0yLkhbfiC4WiAZ/preview',
   form: 'https://docs.google.com/document/d/example-form/preview',
   supportive_document: 'https://docs.google.com/document/d/example-sd/preview',
   'master-dmsc': 'https://data.dmsc.moph.go.th/mes/auth'
