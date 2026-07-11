@@ -163,6 +163,18 @@ function App() {
   const [surveyComment, setSurveyComment] = useState('');
   const [surveyNotification, setSurveyNotification] = useState('');
 
+  const [globalConfig, setGlobalConfig] = useState({
+    embedUrls: DEFAULT_EMBEDS,
+    metabase: {
+      baseUrl: 'https://nonbusiness-sibyl-unvilified.ngrok-free.dev/public/dashboard/',
+      uuids: {
+        overall: 'bce4405c-ec7a-4d86-acbc-dca894c78d94',
+        hba1c: 'hba1c-analysis-uuid',
+        ldl: 'ldl-monitoring-uuid'
+      }
+    }
+  });
+
   const [metabaseBaseUrl, setMetabaseBaseUrl] = useState(
     () => localStorage.getItem('lnelab_metabase_base') || 'https://nonbusiness-sibyl-unvilified.ngrok-free.dev/public/dashboard/'
   );
@@ -197,6 +209,28 @@ function App() {
 
     const savedChecklists = localStorage.getItem('lnelab_checklists');
     if (savedChecklists) setChecklistState(JSON.parse(savedChecklists));
+
+    // Fetch global configuration
+    fetch(`${import.meta.env.BASE_URL}config.json`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load config');
+        return res.json();
+      })
+      .then(data => {
+        if (data) {
+          setGlobalConfig(data);
+          // If no local overrides exist, update states to match global config
+          if (!localStorage.getItem('lnelab_metabase_base') && data.metabase?.baseUrl) {
+            setMetabaseBaseUrl(data.metabase.baseUrl);
+          }
+          if (!localStorage.getItem('lnelab_metabase_uuids') && data.metabase?.uuids) {
+            setMetabaseUuids(data.metabase.uuids);
+          }
+        }
+      })
+      .catch(err => {
+        console.warn('Could not fetch global config.json, using built-in defaults:', err);
+      });
   }, []);
 
   const toggleTheme = () => {
@@ -220,7 +254,7 @@ function App() {
   };
 
   const getEmbedUrl = (pageId) => {
-    return embedUrls[pageId] || DEFAULT_EMBEDS[pageId] || '';
+    return embedUrls[pageId] || globalConfig.embedUrls[pageId] || '';
   };
 
   const isRealEmbedActive = (pageId) => {
@@ -249,6 +283,21 @@ function App() {
       setMetabaseUuids(tempMetabaseUuids);
     } else {
       const updatedUrls = { ...embedUrls, [modalPageId]: tempEmbedUrl };
+      setEmbedUrls(updatedUrls);
+      localStorage.setItem('lnelab_embed_urls', JSON.stringify(updatedUrls));
+    }
+    setModalOpen(false);
+  };
+
+  const handleResetConfig = () => {
+    if (modalPageId === 'rlu_dashboard') {
+      localStorage.removeItem('lnelab_metabase_base');
+      localStorage.removeItem('lnelab_metabase_uuids');
+      setMetabaseBaseUrl(globalConfig.metabase.baseUrl);
+      setMetabaseUuids(globalConfig.metabase.uuids);
+    } else {
+      const updatedUrls = { ...embedUrls };
+      delete updatedUrls[modalPageId];
       setEmbedUrls(updatedUrls);
       localStorage.setItem('lnelab_embed_urls', JSON.stringify(updatedUrls));
     }
@@ -1515,13 +1564,28 @@ function App() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>
-                {t[lang].cancel}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={handleResetConfig}
+                style={{ 
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                  color: 'rgb(239, 68, 68)',
+                  borderColor: 'rgba(239, 68, 68, 0.2)' 
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)' }}
+                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)' }}
+              >
+                {lang === 'th' ? 'คืนค่าเริ่มต้น' : 'Reset to Defaults'}
               </button>
-              <button className="btn btn-primary" onClick={handleSaveConfig}>
-                {t[lang].saveSettings}
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>
+                  {t[lang].cancel}
+                </button>
+                <button className="btn btn-primary" onClick={handleSaveConfig}>
+                  {t[lang].saveSettings}
+                </button>
+              </div>
             </div>
           </div>
         </div>
