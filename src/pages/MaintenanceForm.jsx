@@ -60,15 +60,15 @@ function CheckItem({ label, checked, onChange }) {
         className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200
           ${checked
             ? 'bg-emerald-500 border-emerald-500'
-            : 'dark:border-slate-600 light:border-slate-300 dark:bg-white/5 light:bg-white group-hover:border-emerald-400/60'
+            : 'dark:border-slate-600 group-hover:border-emerald-400/60' border-slate-300 bg-white dark:bg-white/5
           }`}
       >
         {checked && <CheckCircle2 size={12} className="text-white" />}
       </span>
       <span className={`text-sm leading-snug transition-colors duration-200
         ${checked
-          ? 'line-through dark:text-slate-500 light:text-slate-400'
-          : 'dark:text-slate-300 light:text-slate-700'
+          ? 'line-through text-slate-400' dark:text-slate-500
+          : 'dark:text-slate-300 text-slate-700'
         }`}>
         {label}
       </span>
@@ -126,7 +126,7 @@ export default function MaintenanceForm({ deviceKey }) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-12 text-center">
         <AlertCircle size={48} className="text-slate-600 mb-4" />
-        <h2 className="text-lg font-semibold dark:text-slate-300 light:text-slate-700 mb-2">Device Not Found</h2>
+        <h2 className="text-lg font-semibold mb-2 text-slate-700 dark:text-slate-300">Device Not Found</h2>
       </div>
     )
   }
@@ -141,11 +141,11 @@ export default function MaintenanceForm({ deviceKey }) {
             <Wrench size={16} className="text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold dark:text-white light:text-slate-800">{device.name}</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{device.name}</h2>
             <div className="w-16 h-1 bg-red-500 rounded-full mt-1" />
           </div>
         </div>
-        <p className="text-xs dark:text-slate-500 light:text-slate-400 mt-2">
+        <p className="text-xs mt-2 text-slate-400 dark:text-slate-500">
           {device.model} • {device.type} • {new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })}
         </p>
       </div>
@@ -154,10 +154,10 @@ export default function MaintenanceForm({ deviceKey }) {
       {status === 'success' && (
         <div className="rounded-xl p-6 bg-emerald-500/10 border border-emerald-500/30 text-center space-y-3">
           <CheckCircle2 size={40} className="text-emerald-400 mx-auto" />
-          <div className="text-sm font-semibold dark:text-emerald-300 light:text-emerald-700">
+          <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
             บันทึกการตรวจสอบเรียบร้อยแล้ว
           </div>
-          <p className="text-xs dark:text-slate-400 light:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             ส่งข้อมูลไปยัง Google Sheets สำเร็จ
           </p>
           <button
@@ -175,7 +175,7 @@ export default function MaintenanceForm({ deviceKey }) {
         <>
           {/* Technician field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium dark:text-slate-400 light:text-slate-600">
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
               ผู้ตรวจสอบ <span className="text-red-400">*</span>
             </label>
             <input
@@ -183,29 +183,23 @@ export default function MaintenanceForm({ deviceKey }) {
               value={technician}
               onChange={e => setTechnician(e.target.value)}
               placeholder="ชื่อ-นามสกุล ผู้ตรวจสอบ"
-              className="w-full rounded-lg px-3 py-2 text-sm
-                dark:bg-white/5 light:bg-white
-                dark:border-slate-700 light:border-slate-200 border
-                dark:text-slate-200 light:text-slate-800
-                dark:placeholder-slate-600 light:placeholder-slate-400
-                focus:outline-none focus:ring-1 focus:ring-cyan-400/50
-                transition-all duration-200"
+              className="w-full rounded-lg px-3 py-2 text-sm border focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all duration-200 bg-white border-slate-200 text-slate-800 placeholder-slate-400 dark:bg-white/5 dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-600"
             />
           </div>
 
           {/* Checklist */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium dark:text-slate-400 light:text-slate-600">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
                 รายการตรวจสอบประจำวัน
               </label>
-              <span className="text-[10px] dark:text-slate-500 light:text-slate-400">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
                 {checkedCount} / {items.length}
               </span>
             </div>
 
             {/* Progress bar */}
-            <div className="h-1 rounded-full dark:bg-slate-800 light:bg-slate-200 overflow-hidden">
+            <div className="h-1 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
               <div
                 className={`h-full rounded-full transition-all duration-500
                   ${allDone ? 'bg-emerald-400' : 'bg-cyan-400'}`}
@@ -213,8 +207,7 @@ export default function MaintenanceForm({ deviceKey }) {
               />
             </div>
 
-            <div className="rounded-xl dark:bg-white/[0.02] light:bg-slate-50
-              border dark:border-slate-700/50 light:border-slate-200 p-4 space-y-0.5">
+            <div className="rounded-xl border p-4 space-y-0.5 bg-slate-50 border-slate-200 dark:bg-white/[0.02] dark:border-slate-700/50">
               {items.map(item => (
                 <CheckItem
                   key={item}
@@ -228,7 +221,7 @@ export default function MaintenanceForm({ deviceKey }) {
 
           {/* Remarks */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium dark:text-slate-400 light:text-slate-600">
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
               หมายเหตุ / ปัญหาที่พบ
             </label>
             <textarea
@@ -236,13 +229,7 @@ export default function MaintenanceForm({ deviceKey }) {
               onChange={e => setRemarks(e.target.value)}
               rows={3}
               placeholder="ระบุปัญหาหรือหมายเหตุเพิ่มเติม (ถ้ามี)"
-              className="w-full rounded-lg px-3 py-2 text-sm resize-none
-                dark:bg-white/5 light:bg-white
-                dark:border-slate-700 light:border-slate-200 border
-                dark:text-slate-200 light:text-slate-800
-                dark:placeholder-slate-600 light:placeholder-slate-400
-                focus:outline-none focus:ring-1 focus:ring-cyan-400/50
-                transition-all duration-200"
+              className="w-full rounded-lg px-3 py-2 text-sm resize-none border focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all duration-200 bg-white border-slate-200 text-slate-800 placeholder-slate-400 dark:bg-white/5 dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-600"
             />
           </div>
 
@@ -264,7 +251,7 @@ export default function MaintenanceForm({ deviceKey }) {
             </button>
 
             {!allDone && (
-              <span className="text-[10px] dark:text-slate-500 light:text-slate-400">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
                 ยังมี {items.length - checkedCount} รายการที่ยังไม่ได้ตรวจสอบ
               </span>
             )}

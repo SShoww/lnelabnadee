@@ -5,21 +5,20 @@ export default function ExternalLinkPanel({ title, subtitle, description, url, b
     <div className="p-6 h-full flex flex-col gap-6 max-w-4xl mx-auto">
       {/* Title Section with Red Underline Accent */}
       <div>
-        <h2 className="text-3xl font-bold dark:text-white light:text-slate-800 mb-1">
+        <h2 className="text-3xl font-bold mb-1 text-slate-800 dark:text-white">
           {title}
         </h2>
         <div className="w-16 h-1 bg-red-500 rounded-full mb-3" />
-        <p className="text-sm dark:text-slate-400 light:text-slate-600 font-medium">
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
           {subtitle}
         </p>
       </div>
 
       {/* Content Card */}
-      <div className="glass p-6 rounded-2xl border dark:border-slate-800/80 light:border-slate-200
-        dark:bg-slate-900/40 light:bg-white shadow-xl flex flex-col gap-6">
+      <div className="glass p-6 rounded-2xl border shadow-xl flex flex-col gap-6 border-slate-200 bg-white dark:border-slate-800/80 dark:bg-slate-900/40">
         
         {/* Description */}
-        <div className="text-sm dark:text-slate-300 light:text-slate-700 leading-relaxed space-y-3">
+        <div className="text-sm leading-relaxed space-y-3 text-slate-700 dark:text-slate-300">
           <p>{description}</p>
         </div>
 

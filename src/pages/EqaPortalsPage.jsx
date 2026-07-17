@@ -32,13 +32,13 @@ export default function EqaPortalsPage() {
     <div className="p-6 h-full flex flex-col gap-6 overflow-y-auto">
       {/* Title */}
       <div>
-        <h2 className="text-2xl font-bold dark:text-white light:text-slate-800 mb-1 flex items-center gap-2">
+        <h2 className="text-2xl font-bold mb-1 flex items-center gap-2 text-slate-800 dark:text-white">
           <Globe className="text-teal-400" />
           EQA External Portals
         </h2>
         {/* Red accent bar under the title */}
         <div className="w-16 h-1 bg-red-500 rounded-full mb-2" />
-        <p className="text-xs dark:text-slate-500 light:text-slate-400">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           ลิงก์เชื่อมต่อระบบลงทะเบียน บันทึกผล และดูผลการประเมินคุณภาพภายนอก (External Quality Assessment)
         </p>
       </div>
@@ -53,8 +53,8 @@ export default function EqaPortalsPage() {
               className={`
                 glass-card rounded-2xl border p-6 flex flex-col justify-between
                 bg-gradient-to-br ${p.colorClass.split(' ')[0]} ${p.colorClass.split(' ')[1]} ${p.colorClass.split(' ')[2]}
-                dark:bg-[#0c1220]/60 light:bg-white
-                dark:hover:shadow-[0_0_30px_rgba(20,184,166,0.1)] light:hover:shadow-lg
+                bg-white dark:bg-[#0c1220]/60
+                hover:shadow-lg dark:hover:shadow-[0_0_30px_rgba(20,184,166,0.1)]
                 transition-all duration-300 hover:-translate-y-1
               `}
             >
@@ -68,12 +68,12 @@ export default function EqaPortalsPage() {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-lg font-bold dark:text-white light:text-slate-800 mb-2">
+                <h3 className="text-lg font-bold mb-2 text-slate-800 dark:text-white">
                   {p.title}
                 </h3>
 
                 {/* Description */}
-                <p className="text-sm dark:text-slate-400 light:text-slate-600 leading-relaxed mb-6">
+                <p className="text-sm leading-relaxed mb-6 text-slate-600 dark:text-slate-400">
                   {p.description}
                 </p>
               </div>

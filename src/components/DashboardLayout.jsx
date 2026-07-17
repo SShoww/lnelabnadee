@@ -30,9 +30,7 @@ function NavGroup({ label, icon: Icon, children, defaultOpen = false }) {
     <div>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium
-          text-slate-400 dark:text-slate-400 light:text-slate-500
-          hover:text-cyan-400 hover:bg-white/5 transition-all duration-200 group"
+        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium hover:text-teal-600 dark:hover:text-cyan-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-all duration-200 group text-slate-500 dark:text-slate-400"
       >
         <span className="flex items-center gap-2">
           <Icon size={15} className="opacity-70 group-hover:opacity-100" />
@@ -53,8 +51,8 @@ function SidebarLink({ to, children, end = false }) {
       className={({ isActive }) =>
         `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 ${
           isActive
-            ? 'sidebar-item-active text-cyan-300 font-semibold'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            ? 'sidebar-item-active text-teal-700 dark:text-cyan-300 font-semibold'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
         }`
       }
     >
@@ -76,12 +74,12 @@ export default function DashboardLayout({ children }) {
   const Sidebar = (
     <aside className={`
       glass h-screen w-72 flex-shrink-0 flex flex-col
-      dark:bg-[rgba(7,11,19,0.85)] light:bg-white/90
-      border-r dark:border-slate-800/80 light:border-slate-200
+      bg-white/90 dark:bg-[rgba(7,11,19,0.85)]
+      border-r border-slate-200 dark:border-slate-800/80
       transition-colors duration-300
     `}>
       {/* Logo */}
-      <div className="px-5 py-5 border-b dark:border-slate-800/60 light:border-slate-200">
+      <div className="px-5 py-5 border-b border-slate-200 dark:border-slate-800/60">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
@@ -176,7 +174,7 @@ export default function DashboardLayout({ children }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t dark:border-slate-800/60 light:border-slate-200 text-[10px] text-slate-500">
+      <div className="px-4 py-3 border-t text-[10px] text-slate-500 border-slate-200 dark:border-slate-800/60">
         <p>LNELABNADEE Portal v2.0</p>
         <p>โรงพยาบาลนาดี • กลุ่มงานเทคนิคการแพทย์</p>
       </div>
@@ -201,10 +199,7 @@ export default function DashboardLayout({ children }) {
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header bar */}
-        <header className="glass flex items-center justify-between px-5 py-3
-          dark:bg-[rgba(7,11,19,0.6)] light:bg-white/80
-          border-b dark:border-slate-800/60 light:border-slate-200
-          backdrop-blur-xl z-10">
+        <header className="glass flex items-center justify-between px-5 py-3 border-b backdrop-blur-xl z-10 bg-white/80 border-slate-200 dark:bg-[rgba(7,11,19,0.6)] dark:border-slate-800/60">
           <div className="flex items-center gap-3">
             <button
               className="lg:hidden p-1.5 rounded-lg dark:text-slate-400 hover:text-cyan-400 hover:bg-white/5 transition-all"
@@ -213,10 +208,10 @@ export default function DashboardLayout({ children }) {
               <Menu size={20} />
             </button>
             <div>
-              <h1 className="text-sm font-semibold dark:text-slate-100 light:text-slate-800">
+              <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 Medical Technology Division
               </h1>
-              <p className="text-[10px] dark:text-slate-500 light:text-slate-400">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
                 โรงพยาบาลนาดี — KPI & LAB Performance Portal
               </p>
             </div>
@@ -226,15 +221,14 @@ export default function DashboardLayout({ children }) {
             {/* Dark/Light toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg dark:text-slate-400 dark:hover:text-cyan-400 light:text-slate-600 light:hover:text-blue-600
-                hover:bg-white/10 transition-all duration-200"
+              className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-cyan-400"
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
             {/* Live timestamp */}
-            <span className="hidden md:block text-[10px] dark:text-slate-500 light:text-slate-400 tabular-nums">
+            <span className="hidden md:block text-[10px] tabular-nums text-slate-400 dark:text-slate-500">
               {new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
             </span>
           </div>

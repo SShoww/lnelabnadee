@@ -21,21 +21,16 @@ export default function SatisfactionPanel() {
       <div className="flex items-start justify-between">
         <div>
           {/* Title with red accent bar — mirrors original Google Sites layout */}
-          <h2 className="text-2xl font-bold dark:text-white light:text-slate-800 mb-1">
+          <h2 className="text-2xl font-bold mb-1 text-slate-800 dark:text-white">
             แบบสอบถามความพึงพอใจ
           </h2>
           <div className="w-16 h-1 bg-red-500 rounded-full mb-2" />
-          <p className="text-xs dark:text-slate-500 light:text-slate-400">Satisfaction Survey Dashboard</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Satisfaction Survey Dashboard</p>
         </div>
 
         <button
           onClick={() => setRefreshKey(k => k + 1)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-            dark:text-slate-400 light:text-slate-600
-            dark:hover:text-cyan-400 light:hover:text-blue-600
-            dark:hover:bg-white/5 light:hover:bg-slate-100
-            border dark:border-slate-700/50 light:border-slate-200
-            transition-all duration-200"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all duration-200 text-slate-600 hover:text-blue-600 hover:bg-slate-100 border-slate-200 dark:text-slate-400 dark:hover:text-cyan-400 dark:hover:bg-white/5 dark:border-slate-700/50"
         >
           <RefreshCw size={12} />
           Refresh
@@ -67,7 +62,7 @@ export default function SatisfactionPanel() {
         {activeTab.embeds.map((url, idx) => (
           <div
             key={`${activeTab.id}-${idx}-${refreshKey}`}
-            className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md"
+            className="relative rounded-xl overflow-hidden border bg-white h-[600px] shadow-md border-slate-200 dark:border-slate-700/50"
           >
             <iframe
               src={url}

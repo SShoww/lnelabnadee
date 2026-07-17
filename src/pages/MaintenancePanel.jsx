@@ -30,25 +30,20 @@ function AppsScriptPanel({ url, title }) {
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Alert Card & Banner */}
-      <div className="
-        w-full rounded-2xl p-5 border
-        dark:bg-[#0c1220]/60 light:bg-slate-50/80
-        dark:border-teal-500/20 light:border-teal-400/30
-        backdrop-blur-sm shadow-md
-      ">
+      <div className="w-full rounded-2xl p-5 border backdrop-blur-sm shadow-md bg-slate-50/80 border-teal-400/30 dark:bg-[#0c1220]/60 dark:border-teal-500/20">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 mt-0.5 shrink-0">
               <ShieldAlert size={20} />
             </div>
             <div>
-              <h4 className="text-sm font-semibold dark:text-white light:text-slate-800">
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-white">
                 ระบบบันทึกข้อมูลและตรวจสอบการบำรุงรักษาเครื่องมือ ({title})
               </h4>
-              <p className="text-xs dark:text-slate-400 light:text-slate-600 mt-1.5 leading-relaxed">
+              <p className="text-xs mt-1.5 leading-relaxed text-slate-600 dark:text-slate-400">
                 <span className="font-semibold text-teal-400">หมายเหตุ:</span> หากระบบแจ้งข้อความ <strong>'Refused to connect'</strong> หรือไม่สามารถโหลดหน้าต่างบันทึกข้อมูลด้านล่างได้ มีสาเหตุมาจากระบบความปลอดภัยของเบราว์เซอร์ หรือระบบตรวจพบบัญชี Google ลงทะเบียนซ้ำซ้อน
               </p>
-              <p className="text-[11px] dark:text-slate-500 light:text-slate-500 mt-1 italic">
+              <p className="text-[11px] mt-1 italic text-slate-500 dark:text-slate-500">
                 แนะแนวทาง: หากกดปุ่มแล้วหน้าต่างใหม่ยังแจ้งปัญหา ให้ลองเปิดผ่าน "หน้าต่างไม่ระบุตัวตน (Incognito Window)"
               </p>
             </div>
@@ -72,17 +67,17 @@ function AppsScriptPanel({ url, title }) {
         </div>
 
         {/* Collapsible Admin Guide */}
-        <div className="mt-4 border-t dark:border-slate-800/60 light:border-slate-200 pt-3">
+        <div className="mt-4 border-t pt-3 border-slate-200 dark:border-slate-800/60">
           <button
             onClick={() => setOpenAdmin(!openAdmin)}
-            className="flex items-center gap-1.5 text-xs font-medium dark:text-teal-400/90 light:text-teal-600 hover:underline"
+            className="flex items-center gap-1.5 text-xs font-medium hover:underline text-teal-600 dark:text-teal-400/90"
           >
             {openAdmin ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             สำหรับผู้ดูแลระบบ: วิธีแก้ไขข้อผิดพลาด Refused to connect (X-Frame-Options)
           </button>
           
           {openAdmin && (
-            <div className="mt-3 text-xs dark:text-slate-300 light:text-slate-700 bg-slate-950/40 dark:bg-slate-900/60 rounded-xl p-4 border dark:border-slate-800 light:border-slate-200">
+            <div className="mt-3 text-xs bg-slate-950/40 rounded-xl p-4 border text-slate-700 border-slate-200 dark:text-slate-300 dark:bg-slate-900/60 dark:border-slate-800">
               <p className="font-semibold mb-2 text-teal-400">ขั้นตอนที่ 1: แก้ไข Code entry function (doGet) ใน Google Apps Script</p>
               <div className="relative mb-4">
                 <pre className="p-3 rounded-lg bg-slate-950 text-emerald-400 overflow-x-auto font-mono text-[11px] max-h-60">
@@ -98,7 +93,7 @@ function AppsScriptPanel({ url, title }) {
               </div>
 
               <p className="font-semibold mb-1 text-teal-400">ขั้นตอนที่ 2: ทำการ Deploy เวอร์ชันใหม่ (Redeployment)</p>
-              <ol className="list-decimal pl-5 space-y-1 dark:text-slate-400 light:text-slate-600">
+              <ol className="list-decimal pl-5 space-y-1 text-slate-600 dark:text-slate-400">
                 <li>เปิดไปที่หน้าแก้ไขโครงการ Google Apps Script</li>
                 <li>คลิกปุ่ม <strong>"Deploy"</strong> (การทำให้ใช้งานได้) -&gt; เลือก <strong>"Manage Deployments"</strong> (จัดการการทำให้ใช้งานได้)</li>
                 <li>คลิกไอคอนรูปดินสอ <strong>"Edit"</strong> (แก้ไข) ที่รายการ Deployment ที่ต้องการนำเสนอข้อมูล</li>
@@ -125,7 +120,7 @@ function EmbedOrFallback({ url, title }) {
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
+    <div className="relative rounded-xl overflow-hidden border bg-white h-[600px] shadow-md border-slate-200 dark:border-slate-700/50">
       <iframe
         src={url}
         title={title}
@@ -162,11 +157,11 @@ export default function MaintenancePanel({ deviceKey }) {
       <div className="flex items-start justify-between">
         <div>
           {/* Title with red accent bar — mirrors original Google Sites layout */}
-          <h2 className="text-2xl font-bold dark:text-white light:text-slate-800 mb-1">
+          <h2 className="text-2xl font-bold mb-1 text-slate-800 dark:text-white">
             {device.name}
           </h2>
           <div className="w-16 h-1 bg-red-500 rounded-full mb-2" />
-          <p className="text-xs dark:text-slate-500 light:text-slate-400">
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             {device.model} • {device.type}
           </p>
         </div>
@@ -175,12 +170,7 @@ export default function MaintenancePanel({ deviceKey }) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setRefreshKey(k => k + 1)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-              dark:text-slate-400 light:text-slate-600
-              dark:hover:text-cyan-400 light:hover:text-blue-600
-              dark:hover:bg-white/5 light:hover:bg-slate-100
-              border dark:border-slate-700/50 light:border-slate-200
-              transition-all duration-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all duration-200 text-slate-600 hover:text-blue-600 hover:bg-slate-100 border-slate-200 dark:text-slate-400 dark:hover:text-cyan-400 dark:hover:bg-white/5 dark:border-slate-700/50"
           >
             <RefreshCw size={12} />
             Refresh

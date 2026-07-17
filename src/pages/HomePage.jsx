@@ -23,9 +23,7 @@ export default function HomePage() {
   return (
     <div className="p-6 space-y-8">
       {/* Hero */}
-      <div className="rounded-2xl overflow-hidden relative
-        bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent
-        border dark:border-cyan-500/20 light:border-cyan-300/40 p-8">
+      <div className="rounded-2xl overflow-hidden relative bg-gradient-to-br from-cyan-500/10 via-blue-500/5 to-transparent border p-8 border-cyan-300/40 dark:border-cyan-500/20">
         <div className="absolute inset-0 opacity-5"
           style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, #00f2fe 0%, transparent 60%)' }} />
         <div className="relative">
@@ -36,12 +34,12 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold glow-text">LNELABNADEE Portal</h1>
-              <p className="text-xs dark:text-slate-400 light:text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 KPI & LAB Performance Dashboard • กลุ่มงานเทคนิคการแพทย์ โรงพยาบาลนาดี
               </p>
             </div>
           </div>
-          <p className="text-sm dark:text-slate-300 light:text-slate-600 max-w-xl leading-relaxed">
+          <p className="text-sm max-w-xl leading-relaxed text-slate-600 dark:text-slate-300">
             ระบบติดตามผลการดำเนินงานของห้องปฏิบัติการทางการแพทย์ครบวงจร
             ครอบคลุม EQA, IQC, Sigma Metrics, และ Cumulative CV ทุกแผนก
           </p>
@@ -50,8 +48,7 @@ export default function HomePage() {
 
       {/* KPI summary cards by category */}
       <div>
-        <h2 className="text-sm font-semibold dark:text-slate-400 light:text-slate-500
-          uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 text-slate-500 dark:text-slate-400">
           LAB Performance Sections
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -66,7 +63,7 @@ export default function HomePage() {
             >
               <BarChart3 size={20} className="mb-2 opacity-70" />
               <div className="text-xs font-semibold mb-0.5">{cat}</div>
-              <div className="text-[10px] dark:text-slate-500 light:text-slate-400">{count} dashboards</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500">{count} dashboards</div>
             </button>
           ))}
         </div>
@@ -74,8 +71,7 @@ export default function HomePage() {
 
       {/* Quick access — all 14 dashboards */}
       <div>
-        <h2 className="text-sm font-semibold dark:text-slate-400 light:text-slate-500
-          uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 text-slate-500 dark:text-slate-400">
           Quick Access — All Dashboards
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
@@ -83,22 +79,15 @@ export default function HomePage() {
             <button
               key={e.pageId}
               onClick={() => navigate(e.routePath)}
-              className="group flex items-center justify-between gap-3 rounded-xl px-4 py-3
-                border dark:border-slate-700/50 light:border-slate-200
-                dark:bg-white/[0.02] light:bg-white
-                dark:hover:border-cyan-500/30 light:hover:border-cyan-400/50
-                dark:hover:bg-white/5 light:hover:bg-slate-50
-                transition-all duration-200 text-left"
+              className="group flex items-center justify-between gap-3 rounded-xl px-4 py-3 border transition-all duration-200 text-left border-slate-200 bg-white hover:border-cyan-400/50 hover:bg-slate-50 dark:border-slate-700/50 dark:bg-white/[0.02] dark:hover:border-cyan-500/30 dark:hover:bg-white/5"
             >
               <div>
-                <div className="text-sm font-medium dark:text-slate-200 light:text-slate-700
-                  group-hover:text-cyan-400 transition-colors">
+                <div className="text-sm font-medium group-hover:text-cyan-400 transition-colors text-slate-700 dark:text-slate-200">
                   {e.title}
                 </div>
-                <div className="text-[10px] dark:text-slate-500 light:text-slate-400">{e.subtitle}</div>
+                <div className="text-[10px] text-slate-400 dark:text-slate-500">{e.subtitle}</div>
               </div>
-              <ArrowRight size={14} className="flex-shrink-0 dark:text-slate-600 light:text-slate-400
-                group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all duration-200" />
+              <ArrowRight size={14} className="flex-shrink-0 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all duration-200 text-slate-400 dark:text-slate-600" />
             </button>
           ))}
         </div>

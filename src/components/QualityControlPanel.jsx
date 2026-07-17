@@ -41,25 +41,20 @@ function AppsScriptPanel({ url, title, hideIframe }) {
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Alert Card & Banner */}
-      <div className="
-        w-full rounded-2xl p-5 border
-        dark:bg-[#0c1220]/60 light:bg-slate-50/80
-        dark:border-teal-500/20 light:border-teal-400/30
-        backdrop-blur-sm shadow-md
-      ">
+      <div className="w-full rounded-2xl p-5 border backdrop-blur-sm shadow-md bg-slate-50/80 border-teal-400/30 dark:bg-[#0c1220]/60 dark:border-teal-500/20">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 mt-0.5 shrink-0">
               <ShieldAlert size={20} />
             </div>
             <div>
-              <h4 className="text-sm font-semibold dark:text-white light:text-slate-800">
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-white">
                 ระบบบันทึกข้อมูลและตรวจสอบการบำรุงรักษาเครื่องมือ ({title})
               </h4>
-              <p className="text-xs dark:text-slate-400 light:text-slate-600 mt-1.5 leading-relaxed">
+              <p className="text-xs mt-1.5 leading-relaxed text-slate-600 dark:text-slate-400">
                 <span className="font-semibold text-teal-400">หมายเหตุ:</span> หากระบบแจ้งข้อความ <strong>'Refused to connect'</strong> หรือไม่สามารถโหลดหน้าต่างบันทึกข้อมูลด้านล่างได้ มีสาเหตุมาจากระบบความปลอดภัยของเบราว์เซอร์ หรือระบบตรวจพบบัญชี Google ลงทะเบียนซ้ำซ้อน
               </p>
-              <p className="text-[11px] dark:text-slate-500 light:text-slate-500 mt-1 italic">
+              <p className="text-[11px] mt-1 italic text-slate-500 dark:text-slate-500">
                 แนะแนวทาง: หากกดปุ่มแล้วหน้าต่างใหม่ยังแจ้งปัญหา ให้ลองเปิดผ่าน "หน้าต่างไม่ระบุตัวตน (Incognito Window)"
               </p>
             </div>
@@ -83,17 +78,17 @@ function AppsScriptPanel({ url, title, hideIframe }) {
         </div>
 
         {/* Collapsible Admin Guide */}
-        <div className="mt-4 border-t dark:border-slate-800/60 light:border-slate-200 pt-3">
+        <div className="mt-4 border-t pt-3 border-slate-200 dark:border-slate-800/60">
           <button
             onClick={() => setOpenAdmin(!openAdmin)}
-            className="flex items-center gap-1.5 text-xs font-medium dark:text-teal-400/90 light:text-teal-600 hover:underline"
+            className="flex items-center gap-1.5 text-xs font-medium hover:underline text-teal-600 dark:text-teal-400/90"
           >
             {openAdmin ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             สำหรับผู้ดูแลระบบ: วิธีแก้ไขข้อผิดพลาด Refused to connect (X-Frame-Options)
           </button>
           
           {openAdmin && (
-            <div className="mt-3 text-xs dark:text-slate-300 light:text-slate-700 bg-slate-950/40 dark:bg-slate-900/60 rounded-xl p-4 border dark:border-slate-800 light:border-slate-200">
+            <div className="mt-3 text-xs bg-slate-950/40 rounded-xl p-4 border text-slate-700 border-slate-200 dark:text-slate-300 dark:bg-slate-900/60 dark:border-slate-800">
               <p className="font-semibold mb-2 text-teal-400">ขั้นตอนที่ 1: แก้ไข Code entry function (doGet) ใน Google Apps Script</p>
               <div className="relative mb-4">
                 <pre className="p-3 rounded-lg bg-slate-950 text-emerald-400 overflow-x-auto font-mono text-[11px] max-h-60">
@@ -109,7 +104,7 @@ function AppsScriptPanel({ url, title, hideIframe }) {
               </div>
 
               <p className="font-semibold mb-1 text-teal-400">ขั้นตอนที่ 2: ทำการ Deploy เวอร์ชันใหม่ (Redeployment)</p>
-              <ol className="list-decimal pl-5 space-y-1 dark:text-slate-400 light:text-slate-600">
+              <ol className="list-decimal pl-5 space-y-1 text-slate-600 dark:text-slate-400">
                 <li>เปิดไปที่หน้าแก้ไขโครงการ Google Apps Script</li>
                 <li>คลิกปุ่ม <strong>"Deploy"</strong> (การทำให้ใช้งานได้) -&gt; เลือก <strong>"Manage Deployments"</strong> (จัดการการทำให้ใช้งานได้)</li>
                 <li>คลิกไอคอนรูปดินสอ <strong>"Edit"</strong> (แก้ไข) ที่รายการ Deployment ที่ต้องการนำเสนอข้อมูล</li>
@@ -123,7 +118,7 @@ function AppsScriptPanel({ url, title, hideIframe }) {
 
       {/* Embedded frame underneath */}
       {!hideIframe && (
-        <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
+        <div className="relative rounded-xl overflow-hidden border bg-white h-[600px] shadow-md border-slate-200 dark:border-slate-700/50">
           <iframe
             src={url}
             title={title}
@@ -143,9 +138,8 @@ function AppsScriptPanel({ url, title, hideIframe }) {
 function DriveFolderGrid({ links }) {
   if (!links || links.length === 0) return null
   return (
-    <div className="rounded-xl border dark:border-slate-700/50 light:border-slate-200
-      dark:bg-white/[0.03] light:bg-slate-50 p-4 flex flex-col gap-3">
-      <p className="text-[10px] uppercase tracking-widest dark:text-slate-500 light:text-slate-400 font-semibold">
+    <div className="rounded-xl border p-4 flex flex-col gap-3 border-slate-200 bg-slate-50 dark:border-slate-700/50 dark:bg-white/[0.03]">
+      <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-500">
         📁 โฟลเดอร์รายงาน EQA — Google Drive
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -155,13 +149,7 @@ function DriveFolderGrid({ links }) {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium
-              border transition-all duration-200
-              dark:bg-teal-500/10 dark:border-teal-500/25 dark:text-teal-300
-              dark:hover:bg-teal-500/20 dark:hover:border-teal-500/50 dark:hover:text-teal-200
-              light:bg-teal-50 light:border-teal-400/30 light:text-teal-700
-              light:hover:bg-teal-100 light:hover:border-teal-400/60
-              hover:scale-[1.02] active:scale-100 shadow-sm"
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium border transition-all duration-200 hover:scale-[1.02] active:scale-100 shadow-sm bg-teal-50 border-teal-400/30 text-teal-700 hover:bg-teal-100 hover:border-teal-400/60 dark:bg-teal-500/10 dark:border-teal-500/25 dark:text-teal-300 dark:hover:bg-teal-500/20 dark:hover:border-teal-500/50 dark:hover:text-teal-200"
           >
             <Folder size={14} className="shrink-0 opacity-75 group-hover:opacity-100 transition-opacity" />
             <span className="leading-tight">{link.label}</span>
@@ -183,7 +171,7 @@ function EmbedSlot({ url, title, hideIframe }) {
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
+    <div className="relative rounded-xl overflow-hidden border bg-white h-[600px] shadow-md border-slate-200 dark:border-slate-700/50">
       <iframe
         src={url}
         title={title}
@@ -238,10 +226,10 @@ export default function QualityControlPanel({ pageId: propPageId }) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-12 text-center">
         <AlertCircle size={48} className="text-slate-600 mb-4" />
-        <h2 className="text-lg font-semibold dark:text-slate-300 light:text-slate-700 mb-2">
+        <h2 className="text-lg font-semibold mb-2 text-slate-700 dark:text-slate-300">
           Page Not Found
         </h2>
-        <p className="text-sm dark:text-slate-500 light:text-slate-400">
+        <p className="text-sm text-slate-400 dark:text-slate-500">
           No embed configuration found for ID: <code className="text-cyan-400">{pageId}</code>
         </p>
       </div>
@@ -258,23 +246,18 @@ export default function QualityControlPanel({ pageId: propPageId }) {
       {/* Page header */}
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold dark:text-white light:text-slate-800 mb-1">
+          <h2 className="text-2xl font-bold mb-1 text-slate-800 dark:text-white">
             {embedConfig.title}
           </h2>
           <div className="w-16 h-1 bg-red-500 rounded-full mb-2" />
-          <p className="text-xs dark:text-slate-500 light:text-slate-400">{embedConfig.subtitle}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">{embedConfig.subtitle}</p>
         </div>
 
         {/* Utility controls row */}
         <div className="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
           <button
             onClick={refresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-              dark:text-slate-400 light:text-slate-600
-              dark:hover:text-cyan-400 light:hover:text-blue-600
-              dark:hover:bg-white/5 light:hover:bg-slate-100
-              border dark:border-slate-700/50 light:border-slate-200
-              transition-all duration-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all duration-200 text-slate-600 hover:text-blue-600 hover:bg-slate-100 border-slate-200 dark:text-slate-400 dark:hover:text-cyan-400 dark:hover:bg-white/5 dark:border-slate-700/50"
           >
             <RefreshCw size={12} className={loading && !isMulti && !isFirstUrlAppsScript ? 'spinner' : ''} />
             Refresh
@@ -291,12 +274,7 @@ export default function QualityControlPanel({ pageId: propPageId }) {
               href={firstUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-                dark:text-slate-400 light:text-slate-600
-                dark:hover:text-cyan-400 light:hover:text-blue-600
-                dark:hover:bg-white/5 light:hover:bg-slate-100
-                border dark:border-slate-700/50 light:border-slate-200
-                transition-all duration-200"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all duration-200 text-slate-600 hover:text-blue-600 hover:bg-slate-100 border-slate-200 dark:text-slate-400 dark:hover:text-cyan-400 dark:hover:bg-white/5 dark:border-slate-700/50"
             >
               <ExternalLink size={12} />
               Open
@@ -325,26 +303,21 @@ export default function QualityControlPanel({ pageId: propPageId }) {
       ) : isFirstUrlAppsScript ? (
         <AppsScriptPanel url={firstUrl} title={embedConfig.title} hideIframe={pageId === 'poct-dtx-rphst'} />
       ) : (
-        <div className="relative flex-1 min-h-[600px] rounded-xl overflow-hidden
-          dark:border dark:border-slate-700/50 light:border light:border-slate-200
-          dark:shadow-[0_0_30px_rgba(0,242,254,0.05)] light:shadow-md
-          bg-white"
+        <div className="relative flex-1 min-h-[600px] rounded-xl overflow-hidden bg-white border border-slate-200 shadow-md dark:border dark:border-slate-700/50 dark:shadow-[0_0_30px_rgba(0,242,254,0.05)]"
         >
           {loading && !error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10
-              dark:bg-[#0a0f1c]/90 light:bg-white/90 backdrop-blur-sm rounded-xl">
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 backdrop-blur-sm rounded-xl bg-white/90 dark:bg-[#0a0f1c]/90">
               <div className="w-10 h-10 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 spinner mb-4" />
-              <p className="text-xs dark:text-slate-400 light:text-slate-500">กำลังโหลดแดชบอร์ด…</p>
-              <p className="text-[10px] dark:text-slate-600 light:text-slate-400 mt-1">{embedConfig.title}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">กำลังโหลดแดชบอร์ด…</p>
+              <p className="text-[10px] mt-1 text-slate-400 dark:text-slate-600">{embedConfig.title}</p>
             </div>
           )}
 
           {error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10
-              dark:bg-[#0a0f1c]/90 light:bg-white/90 backdrop-blur-sm rounded-xl">
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 backdrop-blur-sm rounded-xl bg-white/90 dark:bg-[#0a0f1c]/90">
               <AlertCircle size={36} className="text-red-400 mb-3" />
-              <p className="text-sm dark:text-slate-300 light:text-slate-700 mb-1">ไม่สามารถโหลดแดชบอร์ด</p>
-              <p className="text-xs dark:text-slate-500 light:text-slate-400 mb-4">Dashboard failed to load</p>
+              <p className="text-sm mb-1 text-slate-700 dark:text-slate-300">ไม่สามารถโหลดแดชบอร์ด</p>
+              <p className="text-xs mb-4 text-slate-400 dark:text-slate-500">Dashboard failed to load</p>
               <button
                 onClick={refresh}
                 className="px-4 py-2 rounded-lg text-xs bg-cyan-500/10 text-cyan-400
