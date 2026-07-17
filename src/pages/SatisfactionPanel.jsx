@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 
 const TABS = [
-  { id: 'doctor',  label: 'แพทย์',           embeds: ['/embeds/satisfy-doctor-1.html', '/embeds/satisfy-doctor-2.html'] },
-  { id: 'nurse',   label: 'พยาบาล',          embeds: ['/embeds/satisfy-nurse-1.html', '/embeds/satisfy-nurse-2.html'] },
-  { id: 'staff',   label: 'เจ้าหน้าที่ รพ.สต.', embeds: ['/embeds/satisfy-staff-1.html', '/embeds/satisfy-staff-2.html'] },
-  { id: 'patient', label: 'ผู้รับบริการ',     embeds: ['/embeds/satisfy-patient-1.html', '/embeds/satisfy-patient-2.html'] },
-  { id: 'hstaff',  label: 'เจ้าหน้าที่โรงพยาบาล', embeds: ['/embeds/satisfy-hstaff-1.html', '/embeds/satisfy-hstaff-2.html'] }
+  { id: 'doctor',  label: 'แพทย์',           embeds: ['embeds/satisfy-doctor-1.html', 'embeds/satisfy-doctor-2.html'] },
+  { id: 'nurse',   label: 'พยาบาล',          embeds: ['embeds/satisfy-nurse-1.html', 'embeds/satisfy-nurse-2.html'] },
+  { id: 'staff',   label: 'เจ้าหน้าที่ รพ.สต.', embeds: ['embeds/satisfy-staff-1.html', 'embeds/satisfy-staff-2.html'] },
+  { id: 'patient', label: 'ผู้รับบริการ',     embeds: ['embeds/satisfy-patient-1.html', 'embeds/satisfy-patient-2.html'] },
+  { id: 'hstaff',  label: 'เจ้าหน้าที่โรงพยาบาล', embeds: ['embeds/satisfy-hstaff-1.html', 'embeds/satisfy-hstaff-2.html'] }
 ]
 
 export default function SatisfactionPanel() {

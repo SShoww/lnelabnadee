@@ -14,7 +14,7 @@
       "subtitle": "Microscopic Performance",
       "category": "Microscopic",
       "routePath": "/quality-control/performance/urine-eqa",
-      "embedUrl": "/embeds/perf-urine-eqa-kpi.html"
+      "embedUrl": "embeds/perf-urine-eqa-kpi.html"
     },
     "perf-eqa-dtx-kpi": {
       "pageId": "perf-eqa-dtx-kpi",
@@ -22,7 +22,7 @@
       "subtitle": "POCT Performance",
       "category": "POCT",
       "routePath": "/quality-control/performance/eqa-dtx",
-      "embedUrl": "/embeds/perf-eqa-dtx-kpi.html"
+      "embedUrl": "embeds/perf-eqa-dtx-kpi.html"
     },
     "perf-eqa-hba1c-kpi": {
       "pageId": "perf-eqa-hba1c-kpi",
@@ -30,7 +30,7 @@
       "subtitle": "Chemistry Performance",
       "category": "Chemistry",
       "routePath": "/quality-control/performance/eqa-hba1c",
-      "embedUrl": "/embeds/perf-eqa-hba1c-kpi.html"
+      "embedUrl": "embeds/perf-eqa-hba1c-kpi.html"
     },
     "perf-sigma-chem": {
       "pageId": "perf-sigma-chem",
@@ -39,9 +39,9 @@
       "category": "Chemistry",
       "routePath": "/quality-control/performance/sigma-chem",
       "embedUrls": [
-        "/embeds/perf-sigma-chem-1.html",
-        "/embeds/perf-sigma-chem-2.html",
-        "/embeds/perf-sigma-chem-3.html"
+        "embeds/perf-sigma-chem-1.html",
+        "embeds/perf-sigma-chem-2.html",
+        "embeds/perf-sigma-chem-3.html"
       ]
     },
     "perf-eqa-chemistry-kpi": {
@@ -50,7 +50,7 @@
       "subtitle": "Chemistry Performance",
       "category": "Chemistry",
       "routePath": "/quality-control/performance/eqa-chem",
-      "embedUrl": "/embeds/perf-eqa-chemistry-kpi.html"
+      "embedUrl": "embeds/perf-eqa-chemistry-kpi.html"
     },
     "perf-cumulative-cv-chem": {
       "pageId": "perf-cumulative-cv-chem",
@@ -58,7 +58,7 @@
       "subtitle": "Chemistry Performance",
       "category": "Chemistry",
       "routePath": "/quality-control/performance/cv-chem",
-      "embedUrl": "/embeds/perf-cumulative-cv-chem.html"
+      "embedUrl": "embeds/perf-cumulative-cv-chem.html"
     },
     "perf-total-error-chem": {
       "pageId": "perf-total-error-chem",
@@ -67,8 +67,8 @@
       "category": "Chemistry",
       "routePath": "/quality-control/performance/te-chem",
       "embedUrls": [
-        "/embeds/perf-total-error-chem-1.html",
-        "/embeds/perf-total-error-chem-2.html"
+        "embeds/perf-total-error-chem-1.html",
+        "embeds/perf-total-error-chem-2.html"
       ]
     },
     "perf-cumulative-cv-hemato": {
@@ -77,7 +77,7 @@
       "subtitle": "Hematology Performance",
       "category": "Hematology",
       "routePath": "/quality-control/performance/cv-hemato",
-      "embedUrl": "/embeds/perf-cumulative-cv-hemato.html"
+      "embedUrl": "embeds/perf-cumulative-cv-hemato.html"
     },
     "perf-total-error-hemato": {
       "pageId": "perf-total-error-hemato",
@@ -86,8 +86,8 @@
       "category": "Hematology",
       "routePath": "/quality-control/performance/te-hemato",
       "embedUrls": [
-        "/embeds/perf-total-error-hemato-1.html",
-        "/embeds/perf-total-error-hemato-2.html"
+        "embeds/perf-total-error-hemato-1.html",
+        "embeds/perf-total-error-hemato-2.html"
       ]
     },
     "perf-sigma-hemato": {
@@ -97,9 +97,9 @@
       "category": "Hematology",
       "routePath": "/quality-control/performance/sigma-hemato",
       "embedUrls": [
-        "/embeds/perf-sigma-hemato-1.html",
-        "/embeds/perf-sigma-hemato-2.html",
-        "/embeds/perf-sigma-hemato-3.html"
+        "embeds/perf-sigma-hemato-1.html",
+        "embeds/perf-sigma-hemato-2.html",
+        "embeds/perf-sigma-hemato-3.html"
       ]
     },
     "perf-eqa-hemato-kpi": {
@@ -108,7 +108,7 @@
       "subtitle": "Hematology Performance",
       "category": "Hematology",
       "routePath": "/quality-control/performance/eqa-hemato",
-      "embedUrl": "/embeds/perf-eqa-hemato-kpi.html"
+      "embedUrl": "embeds/perf-eqa-hemato-kpi.html"
     },
     "perf-eqa-hstrop-kpi": {
       "pageId": "perf-eqa-hstrop-kpi",
@@ -116,7 +116,7 @@
       "subtitle": "Serology Performance",
       "category": "Serology",
       "routePath": "/quality-control/performance/eqa-hstrop",
-      "embedUrl": "/embeds/perf-eqa-hstrop-kpi.html"
+      "embedUrl": "embeds/perf-eqa-hstrop-kpi.html"
     },
     "perf-eqa-thyroid-kpi": {
       "pageId": "perf-eqa-thyroid-kpi",
@@ -124,7 +124,7 @@
       "subtitle": "Serology Performance",
       "category": "Serology",
       "routePath": "/quality-control/performance/eqa-thyroid",
-      "embedUrl": "/embeds/perf-eqa-thyroid-kpi.html"
+      "embedUrl": "embeds/perf-eqa-thyroid-kpi.html"
     }
   },
   "qualityWorkEmbeds": {
@@ -162,7 +162,7 @@
       "routePath": "/quality-work/consult",
       "embedUrls": [
         "https://script.google.com/macros/s/AKfycbx-AgZ03QZlK1JYpK01zBpMDvltG6XJQMhHvSdIv-YdSueJ_35lS0KbPq_N5CK2DqI/exec",
-        "/embeds/consult-dashboard.html"
+        "embeds/consult-dashboard.html"
       ]
     },
     "tat": {
@@ -185,7 +185,7 @@
       "embedUrls": [
         "https://www.youtube.com/embed/VFLe-sRR1s8",
         "https://script.google.com/macros/s/AKfycbwQWNrIbrQR7SuAy36EqAk_zAwE6dZBY1--zTJsBF192RGjs4RqW8SHhVJS1LFiD14n/exec",
-        "/embeds/poct-dtx.html"
+        "embeds/poct-dtx.html"
       ]
     },
     "eqa-correction-log": {
@@ -193,7 +193,7 @@
       "title": "บันทึกแก้ไข EQA",
       "subtitle": "EQA Correction Log",
       "routePath": "/quality-work/eqa-correction",
-      "embedUrl": "/embeds/eqa-correction-log.html"
+      "embedUrl": "embeds/eqa-correction-log.html"
     }
   },
   "eqaEmbeds": {
@@ -202,7 +202,7 @@
       "title": "EQA Chemistry",
       "subtitle": "โปรแกรม EQA เคมีคลินิก",
       "routePath": "/quality-control/eqa/chemistry",
-      "embedUrl": "/embeds/eqa-chemistry.html",
+      "embedUrl": "embeds/eqa-chemistry.html",
       "driveLinks": [
         {
           "label": "📁 Routine Chem",
@@ -219,7 +219,7 @@
       "title": "EQA Hematology",
       "subtitle": "โปรแกรม EQA โลหิตวิทยา",
       "routePath": "/quality-control/eqa/hematology",
-      "embedUrl": "/embeds/eqa-hematology.html",
+      "embedUrl": "embeds/eqa-hematology.html",
       "driveLinks": [
         {
           "label": "📁 CBC",
@@ -236,7 +236,7 @@
       "title": "EQA Immunology",
       "subtitle": "โปรแกรม EQA อิมมูโนวิทยา",
       "routePath": "/quality-control/eqa/immunology",
-      "embedUrl": "/embeds/eqa-immunology.html",
+      "embedUrl": "embeds/eqa-immunology.html",
       "driveLinks": [
         {
           "label": "📁 Thyroid",
@@ -265,7 +265,7 @@
       "title": "EQA POCT",
       "subtitle": "โปรแกรม EQA POCT",
       "routePath": "/quality-control/eqa/poct",
-      "embedUrl": "/embeds/eqa-poct.html"
+      "embedUrl": "embeds/eqa-poct.html"
     }
   },
   "iqcEmbeds": {
@@ -274,7 +274,7 @@
       "title": "Cumulative CV%",
       "subtitle": "IQC สะสม CV%",
       "routePath": "/quality-control/iqc/cv",
-      "embedUrl": "/embeds/iqc-cv.html",
+      "embedUrl": "embeds/iqc-cv.html",
       "actionButtons": [
         {
           "label": "ลงค่า CV%",
@@ -287,7 +287,7 @@
       "title": "IQC DTX นาดี",
       "subtitle": "IQC DTX NADEE HOSPITAL",
       "routePath": "/quality-control/iqc/dtx",
-      "embedUrl": "/embeds/iqc-dtx.html",
+      "embedUrl": "embeds/iqc-dtx.html",
       "actionButtons": [
         {
           "label": "ลงผล IQC",
@@ -300,7 +300,7 @@
       "title": "IQC Microbilirubin",
       "subtitle": "IQC Micro Bilirubin",
       "routePath": "/quality-control/iqc/microbilirubin",
-      "embedUrl": "/embeds/iqc-microbilirubin.html"
+      "embedUrl": "embeds/iqc-microbilirubin.html"
     }
   },
   "rluEmbeds": {
@@ -309,7 +309,7 @@
       "title": "RLU_Metabase",
       "subtitle": "Rational Laboratory Use",
       "routePath": "/rlu/metabase",
-      "embedUrl": "/embeds/rlu-dashboard.html",
+      "embedUrl": "embeds/rlu-dashboard.html",
       "actionButtons": [
         {
           "label": "วิธีใช้งาน Metabase",
@@ -354,7 +354,7 @@
       "type": "Luminescence Analyzer",
       "embedUrls": [
         "https://script.google.com/macros/s/AKfycbwsiiBxK6ZkB5pYpwIDWnq39EBCOmY2piJKYPxkdl0-mRUZLXHdvsP66c5gU68g5A/exec",
-        "/embeds/m-autolumo.html"
+        "embeds/m-autolumo.html"
       ]
     },
     {
@@ -365,7 +365,7 @@
       "type": "Coagulation Analyzer",
       "embedUrls": [
         "https://script.google.com/macros/s/AKfycbw2mDjSjRtap_p0RCzf_G_zsCsJzgk-VmJQJ-nQrBlLlMCQGfyY1XnAve-Np6Q9w38Y/exec",
-        "/embeds/m-ca620.html"
+        "embeds/m-ca620.html"
       ]
     },
     {
