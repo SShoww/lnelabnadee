@@ -322,7 +322,7 @@ export default function QualityControlPanel({ pageId: propPageId }) {
       ) : isFirstUrlAppsScript ? (
         <AppsScriptPanel url={firstUrl} title={embedConfig.title} />
       ) : (
-        <div className="relative flex-1 rounded-xl overflow-hidden
+        <div className="relative flex-1 min-h-[600px] rounded-xl overflow-hidden
           dark:border dark:border-slate-700/50 light:border light:border-slate-200
           dark:shadow-[0_0_30px_rgba(0,242,254,0.05)] light:shadow-md
           bg-white"
