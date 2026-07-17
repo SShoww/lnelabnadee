@@ -1,11 +1,18 @@
 <!doctype html>
-<html lang="th">
+<html lang="th" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="LNELABNADEE - พอร์ทัลระบบจัดการการควบคุมคุณภาพภายนอก (EQA) การควบคุมคุณภาพภายใน (IQC) แดชบอร์ด RLU Metabase และการซ่อมบำรุงรักษาเครื่องวิเคราะห์อัตโนมัติ กลุ่มงานเทคนิคการแพทย์ โรงพยาบาลนาดี" />
-    <title>LNELABNADEE - กลุ่มงานเทคนิคการแพทย์ โรงพยาบาลนาดี</title>
+    <meta name="description" content="LNELABNADEE — พอร์ทัลระบบ KPI และ LAB Performance Dashboard กลุ่มงานเทคนิคการแพทย์ โรงพยาบาลนาดี" />
+    <title>LNELABNADEE — KPI & LAB Performance Portal</title>
+    <!-- Inline script to apply saved theme before first render (prevents flash) -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('lnelab_theme') || 'dark';
+        document.documentElement.className = t;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

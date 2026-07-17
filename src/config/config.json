@@ -1,0 +1,433 @@
+{
+  "crawledEmbeds": {
+    "perf-micros-kpi": {
+      "pageId": "perf-micros-kpi",
+      "title": "MICROS.KPI",
+      "subtitle": "Microscopic Performance",
+      "category": "Microscopic",
+      "routePath": "/quality-control/performance/microscopic",
+      "embedUrl": "https://script.google.com/macros/s/AKfycbzigyeiy0E7k2JtWVUDAFvX-EKwX-vb2dpZWAiPn64Jpcgws7Rs3bqbFJ9Y5If2fJhR/exec"
+    },
+    "perf-urine-eqa-kpi": {
+      "pageId": "perf-urine-eqa-kpi",
+      "title": "Urine EQA KPI",
+      "subtitle": "Microscopic Performance",
+      "category": "Microscopic",
+      "routePath": "/quality-control/performance/urine-eqa",
+      "embedUrl": "/embeds/perf-urine-eqa-kpi.html"
+    },
+    "perf-eqa-dtx-kpi": {
+      "pageId": "perf-eqa-dtx-kpi",
+      "title": "EQA DTX KPI",
+      "subtitle": "POCT Performance",
+      "category": "POCT",
+      "routePath": "/quality-control/performance/eqa-dtx",
+      "embedUrl": "/embeds/perf-eqa-dtx-kpi.html"
+    },
+    "perf-eqa-hba1c-kpi": {
+      "pageId": "perf-eqa-hba1c-kpi",
+      "title": "EQA HbA1c KPI",
+      "subtitle": "Chemistry Performance",
+      "category": "Chemistry",
+      "routePath": "/quality-control/performance/eqa-hba1c",
+      "embedUrl": "/embeds/perf-eqa-hba1c-kpi.html"
+    },
+    "perf-sigma-chem": {
+      "pageId": "perf-sigma-chem",
+      "title": "SIGMA CHEMISTRY",
+      "subtitle": "Chemistry Performance",
+      "category": "Chemistry",
+      "routePath": "/quality-control/performance/sigma-chem",
+      "embedUrls": [
+        "/embeds/perf-sigma-chem-1.html",
+        "/embeds/perf-sigma-chem-2.html",
+        "/embeds/perf-sigma-chem-3.html"
+      ]
+    },
+    "perf-eqa-chemistry-kpi": {
+      "pageId": "perf-eqa-chemistry-kpi",
+      "title": "EQA CHEMISTRY KPI",
+      "subtitle": "Chemistry Performance",
+      "category": "Chemistry",
+      "routePath": "/quality-control/performance/eqa-chem",
+      "embedUrl": "/embeds/perf-eqa-chemistry-kpi.html"
+    },
+    "perf-cumulative-cv-chem": {
+      "pageId": "perf-cumulative-cv-chem",
+      "title": "Cumulative CV CHEM",
+      "subtitle": "Chemistry Performance",
+      "category": "Chemistry",
+      "routePath": "/quality-control/performance/cv-chem",
+      "embedUrl": "/embeds/perf-cumulative-cv-chem.html"
+    },
+    "perf-total-error-chem": {
+      "pageId": "perf-total-error-chem",
+      "title": "Total Error CHEM",
+      "subtitle": "Chemistry Performance",
+      "category": "Chemistry",
+      "routePath": "/quality-control/performance/te-chem",
+      "embedUrls": [
+        "/embeds/perf-total-error-chem-1.html",
+        "/embeds/perf-total-error-chem-2.html"
+      ]
+    },
+    "perf-cumulative-cv-hemato": {
+      "pageId": "perf-cumulative-cv-hemato",
+      "title": "Cumulative CV HEMATO.",
+      "subtitle": "Hematology Performance",
+      "category": "Hematology",
+      "routePath": "/quality-control/performance/cv-hemato",
+      "embedUrl": "/embeds/perf-cumulative-cv-hemato.html"
+    },
+    "perf-total-error-hemato": {
+      "pageId": "perf-total-error-hemato",
+      "title": "Total Error Hemato",
+      "subtitle": "Hematology Performance",
+      "category": "Hematology",
+      "routePath": "/quality-control/performance/te-hemato",
+      "embedUrls": [
+        "/embeds/perf-total-error-hemato-1.html",
+        "/embeds/perf-total-error-hemato-2.html"
+      ]
+    },
+    "perf-sigma-hemato": {
+      "pageId": "perf-sigma-hemato",
+      "title": "SIGMA HEMATOLOGY",
+      "subtitle": "Hematology Performance",
+      "category": "Hematology",
+      "routePath": "/quality-control/performance/sigma-hemato",
+      "embedUrls": [
+        "/embeds/perf-sigma-hemato-1.html",
+        "/embeds/perf-sigma-hemato-2.html",
+        "/embeds/perf-sigma-hemato-3.html"
+      ]
+    },
+    "perf-eqa-hemato-kpi": {
+      "pageId": "perf-eqa-hemato-kpi",
+      "title": "EQA HEMATO KPI",
+      "subtitle": "Hematology Performance",
+      "category": "Hematology",
+      "routePath": "/quality-control/performance/eqa-hemato",
+      "embedUrl": "/embeds/perf-eqa-hemato-kpi.html"
+    },
+    "perf-eqa-hstrop-kpi": {
+      "pageId": "perf-eqa-hstrop-kpi",
+      "title": "EQA hs-TROP T KPI",
+      "subtitle": "Serology Performance",
+      "category": "Serology",
+      "routePath": "/quality-control/performance/eqa-hstrop",
+      "embedUrl": "/embeds/perf-eqa-hstrop-kpi.html"
+    },
+    "perf-eqa-thyroid-kpi": {
+      "pageId": "perf-eqa-thyroid-kpi",
+      "title": "EQA THYROID KPI",
+      "subtitle": "Serology Performance",
+      "category": "Serology",
+      "routePath": "/quality-control/performance/eqa-thyroid",
+      "embedUrl": "/embeds/perf-eqa-thyroid-kpi.html"
+    }
+  },
+  "qualityWorkEmbeds": {
+    "workload": {
+      "pageId": "workload",
+      "title": "Work Load",
+      "subtitle": "ปริมาณงานห้องปฏิบัติการ",
+      "routePath": "/quality-work/workload",
+      "embedUrls": [
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=484303714&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=647721814&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=1011396593&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=397096489&resourcekey"
+      ]
+    },
+    "comparison": {
+      "pageId": "comparison",
+      "title": "Comparison Test",
+      "subtitle": "การเปรียบเทียบวิธีทดสอบ",
+      "routePath": "/quality-work/comparison",
+      "embedUrls": [
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=823510267&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=991918274&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=1922690509&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=800830375&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=1968149656&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=1248465158&resourcekey",
+        "https://docs.google.com/spreadsheets/d/1l--sYuLWUPITL9wHZ4oRU2pdF8vC89ZYozCmFzv_QqE/htmlembed?authuser=0"
+      ]
+    },
+    "consult": {
+      "pageId": "consult",
+      "title": "บันทึกให้คำปรึกษา",
+      "subtitle": "Consultation Log & Dashboard",
+      "routePath": "/quality-work/consult",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbx-AgZ03QZlK1JYpK01zBpMDvltG6XJQMhHvSdIv-YdSueJ_35lS0KbPq_N5CK2DqI/exec",
+        "/embeds/consult-dashboard.html"
+      ]
+    },
+    "tat": {
+      "pageId": "tat",
+      "title": "Turn Around Time",
+      "subtitle": "เวลาตอบสนองผลการตรวจ",
+      "routePath": "/quality-work/tat",
+      "embedUrls": [
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=1933568570&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=1503792288&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=2003255276&resourcekey",
+        "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=530290042&resourcekey"
+      ]
+    },
+    "poct-dtx-rphst": {
+      "pageId": "poct-dtx-rphst",
+      "title": "POCT DTX รพ.สต.",
+      "subtitle": "POCT DTX Health Promotion Hospital",
+      "routePath": "/quality-work/poct-dtx",
+      "embedUrls": [
+        "https://www.youtube.com/embed/VFLe-sRR1s8",
+        "https://script.google.com/macros/s/AKfycbwQWNrIbrQR7SuAy36EqAk_zAwE6dZBY1--zTJsBF192RGjs4RqW8SHhVJS1LFiD14n/exec",
+        "/embeds/poct-dtx.html"
+      ]
+    },
+    "eqa-correction-log": {
+      "pageId": "eqa-correction-log",
+      "title": "บันทึกแก้ไข EQA",
+      "subtitle": "EQA Correction Log",
+      "routePath": "/quality-work/eqa-correction",
+      "embedUrl": "/embeds/eqa-correction-log.html"
+    }
+  },
+  "eqaEmbeds": {
+    "eqa-chemistry": {
+      "pageId": "eqa-chemistry",
+      "title": "EQA Chemistry",
+      "subtitle": "โปรแกรม EQA เคมีคลินิก",
+      "routePath": "/quality-control/eqa/chemistry",
+      "embedUrl": "/embeds/eqa-chemistry.html",
+      "driveLinks": [
+        {
+          "label": "📁 Routine Chem",
+          "url": "https://drive.google.com/drive/u/2/folders/1rf4uIn3nc9YbY6Fr-SaYIXlZEhsf6v93"
+        },
+        {
+          "label": "📁 Cardiac Marker",
+          "url": "https://drive.google.com/drive/u/2/folders/11EFOoNn6FN3pyonGO1D6YB1_hEMlnsJQ"
+        }
+      ]
+    },
+    "eqa-hematology": {
+      "pageId": "eqa-hematology",
+      "title": "EQA Hematology",
+      "subtitle": "โปรแกรม EQA โลหิตวิทยา",
+      "routePath": "/quality-control/eqa/hematology",
+      "embedUrl": "/embeds/eqa-hematology.html",
+      "driveLinks": [
+        {
+          "label": "📁 CBC",
+          "url": "https://drive.google.com/drive/u/2/folders/1SzTcSDm_8N1S875kipep1i8k7IATpmo6"
+        },
+        {
+          "label": "📁 Blood film examination",
+          "url": "https://drive.google.com/drive/u/2/folders/1RSF1FqSf3DypAy1VZEzfq3POO59OC4_L"
+        }
+      ]
+    },
+    "eqa-immunology": {
+      "pageId": "eqa-immunology",
+      "title": "EQA Immunology",
+      "subtitle": "โปรแกรม EQA อิมมูโนวิทยา",
+      "routePath": "/quality-control/eqa/immunology",
+      "embedUrl": "/embeds/eqa-immunology.html",
+      "driveLinks": [
+        {
+          "label": "📁 Thyroid",
+          "url": "https://drive.google.com/drive/u/2/folders/1VgxqB6_XmaV6krFzAA5fgyT6ZU12ZfGH"
+        },
+        {
+          "label": "📁 HIV",
+          "url": "https://drive.google.com/drive/u/2/folders/1VoCCcWuCi_RMJMEZGNl8KjxU3txo0sZ4"
+        },
+        {
+          "label": "📁 Syphylis",
+          "url": "https://drive.google.com/drive/u/2/folders/1XjUGqShYZ2JLo8SdO-HzQw1KOyQNk4ML"
+        },
+        {
+          "label": "📁 Hepatitis B",
+          "url": "https://drive.google.com/drive/u/2/folders/1o_4MFkdE00iXD_dLudHAhuMyH3KipCrS"
+        },
+        {
+          "label": "📁 Hepatitis C",
+          "url": "https://drive.google.com/drive/u/2/folders/1VzpgUMz_D-Bt8-__pDhwJoEe7NGxzhwN"
+        }
+      ]
+    },
+    "eqa-poct": {
+      "pageId": "eqa-poct",
+      "title": "EQA POCT",
+      "subtitle": "โปรแกรม EQA POCT",
+      "routePath": "/quality-control/eqa/poct",
+      "embedUrl": "/embeds/eqa-poct.html"
+    }
+  },
+  "iqcEmbeds": {
+    "iqc-cv": {
+      "pageId": "iqc-cv",
+      "title": "Cumulative CV%",
+      "subtitle": "IQC สะสม CV%",
+      "routePath": "/quality-control/iqc/cv",
+      "embedUrl": "/embeds/iqc-cv.html",
+      "actionButtons": [
+        {
+          "label": "ลงค่า CV%",
+          "url": "https://script.google.com/macros/s/AKfycbyHI3EylISByZoxcOllj-MzyHroQeylHbOmiRN1_hSiH0rWlCLxV8qaHgh9eHhutHIX/exec"
+        }
+      ]
+    },
+    "iqc-dtx": {
+      "pageId": "iqc-dtx",
+      "title": "IQC DTX นาดี",
+      "subtitle": "IQC DTX NADEE HOSPITAL",
+      "routePath": "/quality-control/iqc/dtx",
+      "embedUrl": "/embeds/iqc-dtx.html",
+      "actionButtons": [
+        {
+          "label": "ลงผล IQC",
+          "url": "https://script.google.com/macros/s/AKfycbxBD96MUdxyTdMuKnY8SqdbvTjWMGBkagXzUk_mBcp4v85VcIsZiHAWtlEFRdvn1MCZnA/exec"
+        }
+      ]
+    },
+    "iqc-microbilirubin": {
+      "pageId": "iqc-microbilirubin",
+      "title": "IQC Microbilirubin",
+      "subtitle": "IQC Micro Bilirubin",
+      "routePath": "/quality-control/iqc/microbilirubin",
+      "embedUrl": "/embeds/iqc-microbilirubin.html"
+    }
+  },
+  "rluEmbeds": {
+    "rlu-metabase": {
+      "pageId": "rlu-metabase",
+      "title": "RLU_Metabase",
+      "subtitle": "Rational Laboratory Use",
+      "routePath": "/rlu/metabase",
+      "embedUrl": "/embeds/rlu-dashboard.html",
+      "actionButtons": [
+        {
+          "label": "วิธีใช้งาน Metabase",
+          "url": "https://docs.google.com/spreadsheets/d/1l--sYuLWUPITL9wHZ4oRU2pdF8vC89ZYozCmFzv_QqE/htmlembed"
+        }
+      ]
+    }
+  },
+  "satisfactionCsvs": [
+    {
+      "key": "satisfy-doctor",
+      "label": "แพทย์",
+      "color": "from-blue-500/20 to-indigo-500/10 border-blue-500/30"
+    },
+    {
+      "key": "satisfy-nurse",
+      "label": "พยาบาล",
+      "color": "from-emerald-500/20 to-teal-500/10 border-emerald-500/30"
+    },
+    {
+      "key": "satisfy-staff",
+      "label": "เจ้าหน้าที่",
+      "color": "from-amber-500/20 to-orange-500/10 border-amber-500/30"
+    },
+    {
+      "key": "satisfy-patient",
+      "label": "ผู้รับบริการ",
+      "color": "from-violet-500/20 to-purple-500/10 border-violet-500/30"
+    },
+    {
+      "key": "satisfy-hstaff",
+      "label": "บุคลากรสาธารณสุข",
+      "color": "from-rose-500/20 to-pink-500/10 border-rose-500/30"
+    }
+  ],
+  "maintenanceDevices": [
+    {
+      "key": "m-autolumo",
+      "name": "AutoLumo",
+      "route": "/maintenance/autolumo",
+      "model": "AutoLumo A2000+",
+      "type": "Luminescence Analyzer",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbwsiiBxK6ZkB5pYpwIDWnq39EBCOmY2piJKYPxkdl0-mRUZLXHdvsP66c5gU68g5A/exec",
+        "/embeds/m-autolumo.html"
+      ]
+    },
+    {
+      "key": "m-ca620",
+      "name": "CA-620",
+      "route": "/maintenance/ca-620",
+      "model": "Sysmex CA-620",
+      "type": "Coagulation Analyzer",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbw2mDjSjRtap_p0RCzf_G_zsCsJzgk-VmJQJ-nQrBlLlMCQGfyY1XnAve-Np6Q9w38Y/exec",
+        "/embeds/m-ca620.html"
+      ]
+    },
+    {
+      "key": "m-vitross4600",
+      "name": "Vitross 4600",
+      "route": "/maintenance/vitross-4600",
+      "model": "Vitross 4600",
+      "type": "Chemistry Analyzer",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbyQ3kbg3Y0aPOprreSc3qMI0M7m3XznOgTgujIdVkyS7pGoxy8WgJCuVlIsWSQKokwxXw/exec"
+      ]
+    },
+    {
+      "key": "m-bc6200",
+      "name": "BC 6200",
+      "route": "/maintenance/bc-6200",
+      "model": "Mindray BC-6200",
+      "type": "Hematology Analyzer",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbwLNdRRcVuOhGVXMs2Wa_yChGYvHBMuC9dbojbXzinXdsJvK6L3gx3WoE1SbvcumyJv/exec"
+      ]
+    },
+    {
+      "key": "m-fus1000",
+      "name": "FUS1000",
+      "route": "/maintenance/fus1000",
+      "model": "FUS-1000",
+      "type": "Urine Analyzer",
+      "embedUrls": [
+        "https://script.google.com/macros/s/AKfycbyWUFPkMS3hSTAMwOxqKYTQ1qM6uHF0faKXFf_RdWYhO_I_-n6VpC6y3iVQPmBzIVRXbA/exec"
+      ]
+    }
+  ],
+  "embedUrls": {
+    "satisfy-doctor": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRcXb1J9iDNPpNk0C1Nhzo3Po7FGC-yC1r8oVFX7KM0gLAdq97IIKPHG3yI0lF7XwluPoy6jXcZlpL5/pub?output=csv",
+    "satisfy-nurse": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSiHtDaxiPjbfFMlVfVAIleSWj0DUsQ3mIB08HRzjo_Icd9IIOoUmIbev5mris0piVnCerkdZ78WnM/pub?output=csv",
+    "satisfy-staff": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBIPss2pDpGQf0fkvGsDQC9i9KsbFDvLbgk5wZHUhvZf8jsCxRMFZHif_YxFIrtf2wrJbAkyHja4BI/pub?output=csv",
+    "satisfy-patient": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRUik4A8mm6FZCBkDDFJC049QRxOtrQg8OHPMCUdjIK2QsIqY_IOgddDwx3FPUS0FcAKZ2Zie8m_tHR/pub?output=csv",
+    "satisfy-hstaff": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6sp7kaqemuxPdLG9Lr7inU6siSX7ox78KSkXKjKFVpq4XlYezY5W9-x2ptQdVTnyKOXVQOfthAyL6/pub?output=csv",
+    "workload": "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=484303714&resourcekey",
+    "comparison": "https://docs.google.com/spreadsheets/d/e/2CAIWO3enTC6clA0rUAtkeUqz5Q1lRmCU3L4Crk_T3Ag6XGedhaCs4gZZo_O8tEAwwzVuQz_cQFGk2paLlMQ/gviz/chartiframe?authuser=0&autosize=true&oid=823510267&resourcekey",
+    "consult": "https://script.google.com/macros/s/AKfycbx-AgZ03QZlK1JYpK01zBpMDvltG6XJQMhHvSdIv-YdSueJ_35lS0KbPq_N5CK2DqI/exec",
+    "tat": "https://docs.google.com/spreadsheets/d/e/2CAIWO3emcIzxIFlBWe7n_PQMgThlKNToDSqAvDyDjPymhqaNtpWQIYJ8izljm_w6QgTYF3eh1EFEfonRENg/gviz/chartiframe?authuser=0&autosize=true&oid=1933568570&resourcekey"
+  },
+  "webhookUrls": {
+    "m-autolumo": "https://script.google.com/macros/s/AKfycbwsiiBxK6ZkB5pYpwIDWnq39EBCOmY2piJKYPxkdl0-mRUZLXHdvsP66c5gU68g5A/exec",
+    "m-ca620": "https://script.google.com/macros/s/AKfycbw2mDjSjRtap_p0RCzf_G_zsCsJzgk-VmJQJ-nQrBlLlMCQGfyY1XnAve-Np6Q9w38Y/exec",
+    "m-vitross4600": "https://script.google.com/macros/s/AKfycbyQ3kbg3Y0aPOprreSc3qMI0M7m3XznOgTgujIdVkyS7pGoxy8WgJCuVlIsWSQKokwxXw/exec",
+    "m-bc6200": "https://script.google.com/macros/s/AKfycbwLNdRRcVuOhGVXMs2Wa_yChGYvHBMuC9dbojbXzinXdsJvK6L3gx3WoE1SbvcumyJv/exec",
+    "m-fus1000": "https://script.google.com/macros/s/AKfycbyWUFPkMS3hSTAMwOxqKYTQ1qM6uHF0faKXFf_RdWYhO_I_-n6VpC6y3iVQPmBzIVRXbA/exec"
+  },
+  "metabase": {
+    "baseUrl": "https://nonbusiness-sibyl-unvilified.ngrok-free.dev/public/dashboard/",
+    "uuids": {
+      "overall": "bce4405c-ec7a-4d86-acbc-dca894c78d94"
+    }
+  },
+  "workInstruction": {
+    "pageId": "work-instruction",
+    "title": "Work Instruction",
+    "subtitle": "คู่มือการปฏิบัติงานกลุ่มงานเทคนิคการแพทย์",
+    "routePath": "/work-instruction",
+    "embedUrl": "https://drive.google.com/file/d/1SB4jlVbT9xTqaAgic_0yLkhbfiC4WiAZ/preview"
+  }
+}

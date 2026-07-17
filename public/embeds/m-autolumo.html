@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoLumo Maintenance Control Center</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #f0f4f8; font-family: 'Sarabun', sans-serif; padding: 25px; }
+        .main-title { color: #052c65; font-weight: 700; margin-bottom: 25px; text-align: center; }
+        .card-custom { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; height: 100%; }
+        .filter-section { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px; text-align: center; }
+        .btn-menu { border-radius: 25px; font-weight: bold; padding: 12px 30px; font-size: 1.1rem; transition: 0.3s; width: 180px; }
+        .status-badge { padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; display: inline-block; }
+        .bg-pass { background-color: #d1e7dd; color: #0f5132; }
+        .bg-overdue { background-color: #f8d7da; color: #842029; }
+        .bg-warning { background-color: #fff3cd; color: #664d03; }
+        .table-container { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-top: 20px; display: none; }
+        .cell-pass { color: #198754; font-weight: bold; }
+        .cell-fail { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" style="max-width: 1200px;">
+    <h2 class="main-title">⚙️ AutoLumo A1860 Maintenance Center (LAB NADEE)</h2>
+    
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <h5 class="fw-bold text-secondary">รอบการบำรุงรักษา Daily</h5>
+                <hr>
+                <div id="statusDaily" class="status-badge bg-overdue my-2">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุดเมื่อ: <span id="lastDailyDate">-</span></p>
+                <p class="text-muted small">เปอร์เซ็นต์ผ่านสะสม: <span id="dailyPassPct" class="fw-bold text-primary">0%</span></p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <h5 class="fw-bold text-secondary">รอบการบำรุงรักษา WEEKLY</h5>
+                <hr>
+                <div id="statusWeekly" class="status-badge bg-overdue my-2">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุดเมื่อ: <span id="lastWeeklyDate">-</span></p>
+                <p class="text-muted small">เกณฑ์: ต้องทำอย่างน้อยสัปดาห์ละ 1 ครั้ง</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <h5 class="fw-bold text-secondary">รอบการบำรุงรักษา PM</h5>
+                <hr>
+                <div id="statusPM" class="status-badge bg-warning my-2">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุดเมื่อ: <span id="lastPMDate">-</span></p>
+                <p class="text-muted small">สถานะ: ตรวจสอบประวัติการบำรุงรักษาใหญ่</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <h5 class="text-muted mb-3">👇 เลือกหมวดหมู่ที่ต้องการเปิดดูตารางข้อมูลย้อนหลัง</h5>
+        <div class="d-flex justify-content-center flex-wrap gap-3">
+            <button class="btn btn-outline-primary btn-menu" onclick="showTable('Daily')" id="btn-Daily">Daily</button>
+            <button class="btn btn-outline-success btn-menu" onclick="showTable('WEEKLY')" id="btn-WEEKLY">WEEKLY</button>
+            <button class="btn btn-outline-warning btn-menu" onclick="showTable('PM')" id="btn-PM">PM</button>
+        </div>
+    </div>
+
+    <div id="logTableContainer" class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-primary mb-0">📊 ตารางบันทึกข้อมูลย้อนหลัง: <span id="txtCurrentMode" class="text-dark"></span></h4>
+            <button class="btn btn-sm btn-secondary" onclick="hideTable()">❌ ปิดตาราง</button>
+        </div>
+        <div class="table-responsive" style="max-height: 450px;">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark sticky-top" id="tableHeaders">
+                    </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // URL CSV ที่พี่ให้มา
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTEXmN4UheZoSEmY6pYM4x_1YjcXVrLubE41jBmwdmMvCLij0iljZ4w8SjoNuzDJAV_ZGK1VdIMHsci/pub?gid=272480775&single=true&output=csv';
+    
+    let rawData = [];
+
+    // ฟังก์ชันเริ่มโหลดข้อมูลเมื่อเปิดหน้าจอ
+    function initDashboard() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawData = results.data;
+                processMaintenanceCycles(); // คำนวณภาพรวมตามรอบทันที
+            }
+        });
+    }
+
+    // ฟังก์ชันคำนวณและประมวลผลภาพรวมตามรอบเวลา (การ์ด 3 ใบด้านบน)
+    function processMaintenanceCycles() {
+        const today = new Date();
+        
+        let lastDaily = null;
+        let lastWeekly = null;
+        let lastPM = null;
+        
+        let totalDailyChecks = 0;
+        let passDailyChecks = 0;
+
+        // วนลูปอ่านข้อมูลทั้งหมดเพื่อหาวันล่าสุดของแต่ละกลุ่ม
+        rawData.forEach(row => {
+            const type = (row["Type"] || row["TYPE"] || "").toUpperCase();
+            const workDateStr = row["Work Date"] || row["Timestamp"];
+            if (!workDateStr) return;
+
+            const workDate = new Date(workDateStr);
+
+            if (type.includes("DAILY")) {
+                if (!lastDaily || workDate > lastDaily) lastDaily = workDate;
+                
+                // คิด % Pass สะสมของ Dailyไปด้วย
+                Object.keys(row).forEach(key => {
+                    if (key.toLowerCase().includes("item") || /^\d+\./.test(key)) {
+                        const val = (row[key] || "").trim().toLowerCase();
+                        if (val === "pass" || val === "✔") { passDailyChecks++; totalDailyChecks++; }
+                        else if (val === "fail" || val === "not done" || val === "✘") { totalDailyChecks++; }
+                    }
+                });
+            } 
+            else if (type.includes("WEEKLY")) {
+                if (!lastWeekly || workDate > lastWeekly) lastWeekly = workDate;
+            } 
+            else if (type.includes("PM")) {
+                if (!lastPM || workDate > lastPM) lastPM = workDate;
+            }
+        });
+
+        // 1. สรุปภาพรวมรอบ Daily
+        if (lastDaily) {
+            const diffTime = Math.abs(today - lastDaily);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('lastDailyDate').innerText = lastDaily.toLocaleDateString('th-TH');
+            const dailyPct = totalDailyChecks > 0 ? Math.round((passDailyChecks / totalDailyChecks) * 100) : 0;
+            document.getElementById('dailyPassPct').innerText = dailyPct + '%';
+
+            if (diffDays <= 1) {
+                setBoxStatus('statusDaily', '✅ เรียบร้อยดี', 'bg-pass');
+            } else {
+                setBoxStatus('statusDaily', `⚠️ ค้างส่ง ${diffDays} วัน`, 'bg-overdue');
+            }
+        }
+
+        // 2. สรุปภาพรวมรอบ Weekly (ต้องทำในรอบ 7 วัน)
+        if (lastWeekly) {
+            const diffTime = Math.abs(today - lastWeekly);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('lastWeeklyDate').innerText = lastWeekly.toLocaleDateString('th-TH');
+
+            if (diffDays <= 7) {
+                setBoxStatus('statusWeekly', '✅ ครบตามรอบสัปดาห์', 'bg-pass');
+            } else {
+                setBoxStatus('statusWeekly', `⚠️ เกินกำหนดสัปดาห์มา ${diffDays - 7} วัน`, 'bg-overdue');
+            }
+        } else {
+            setBoxStatus('statusWeekly', '❌ ยังไม่มีข้อมูลสัปดาห์นี้', 'bg-overdue');
+        }
+
+        // 3. สรุปภาพรวมรอบ PM
+        if (lastPM) {
+            document.getElementById('lastPMDate').innerText = lastPM.toLocaleDateString('th-TH');
+            setBoxStatus('statusPM', '📋 มีประวัติบันทึก PM', 'bg-pass');
+        } else {
+            setBoxStatus('statusPM', '➖ ไม่มีข้อมูล PM', 'bg-warning');
+        }
+    }
+
+    function setBoxStatus(id, text, className) {
+        const el = document.getElementById(id);
+        el.innerText = text;
+        el.className = `status-badge ${className}`;
+    }
+
+    // ฟังก์ชันเมื่อกดปุ่มด้านบน เพื่อให้ตารางข้อมูล "ค่อยโชว์"
+    function showTable(type) {
+        if (rawData.length === 0) return;
+
+        // สลับไฮไลท์สีปุ่ม
+        ['Daily', 'WEEKLY', 'PM'].forEach(t => {
+            const btn = document.getElementById(`btn-${t}`);
+            if (t === type) {
+                btn.className = `btn btn-${t === 'Daily' ? 'primary' : t === 'WEEKLY' ? 'success' : 'warning'} btn-menu text-white`;
+            } else {
+                btn.className = `btn btn-outline-${t === 'Daily' ? 'primary' : t === 'WEEKLY' ? 'success' : 'warning'} btn-menu`;
+            }
+        });
+
+        // เปิดแสดงผลกล่องตาราง
+        document.getElementById('logTableContainer').style.display = 'block';
+        document.getElementById('txtCurrentMode').innerText = type;
+
+        // สร้างหัวตาราง
+        const headers = Object.keys(rawData[0]);
+        let headerHtml = '<tr>';
+        headers.forEach(h => { headerHtml += `<th class="text-nowrap">${h}</th>`; });
+        headerHtml += '</tr>';
+        document.getElementById('tableHeaders').innerHTML = headerHtml;
+
+        // กรองแถวข้อมูล
+        const filteredRows = rawData.filter(row => {
+            const rType = (row["Type"] || row["TYPE"] || "").toUpperCase();
+            return rType.includes(type.toUpperCase());
+        });
+
+        // นำข้อมูลลงตาราง (เรียงเอาล่าสุดขึ้นก่อน)
+        let bodyHtml = '';
+        if (filteredRows.length === 0) {
+            bodyHtml = `<tr><td colspan="${headers.length}" class="text-center text-muted">ไม่พบประวัติข้อมูลของหัวข้อ ${type}</td></tr>`;
+        } else {
+            [...filteredRows].reverse().forEach(row => {
+                bodyHtml += '<tr>';
+                headers.forEach(h => {
+                    let val = row[h] || '';
+                    let display = val;
+                    let check = val.trim().toLowerCase();
+                    if (check === 'pass' || check === '✔') display = '<span class="cell-pass">✔ Pass</span>';
+                    if (check === 'fail' || check === 'not done' || check === '✘') display = '<span class="cell-fail">✘ Fail</span>';
+                    bodyHtml += `<td>${display}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+        }
+        document.getElementById('tableBody').innerHTML = bodyHtml;
+        
+        // เลื่อนหน้าจอลงมาโฟกัสที่ตารางอัตโนมัติเพื่อความสะดวก
+        document.getElementById('logTableContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ฟังก์ชันกดปิดตารางย้อนหลัง
+    function hideTable() {
+        document.getElementById('logTableContainer').style.display = 'none';
+        ['Daily', 'WEEKLY', 'PM'].forEach(t => {
+            document.getElementById(`btn-${t}`).className = `btn btn-outline-${t === 'Daily' ? 'primary' : t === 'WEEKLY' ? 'success' : 'warning'} btn-menu`;
+        });
+    }
+
+    window.onload = initDashboard;
+</script>
+
+</body>
+</html>

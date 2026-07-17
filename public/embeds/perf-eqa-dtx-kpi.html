@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQA DTX KPI Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; margin: 20px; color: #333; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+        
+        /* Header & Controls */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; }
+        .controls { display: flex; gap: 10px; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; font-size: 0.85rem; }
+        select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Sarabun'; }
+        button { background-color: #1a73e8; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #1557b0; }
+
+        /* Layout Grid */
+        .main-content { display: flex; gap: 30px; }
+        
+        /* Sidebar (Left Top KPI) */
+        .sidebar { flex: 0 0 280px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .kpi-card { background: #fff; border: 1px solid #eee; border-radius: 15px; padding: 25px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .kpi-container { position: relative; width: 180px; height: 180px; margin: 0 auto 15px; }
+        .kpi-text-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; }
+        #kpiValue { font-size: 2.2rem; font-weight: 800; display: block; }
+        .kpi-label { font-size: 0.85rem; color: #666; font-weight: bold; }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .stat-box { padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; color: white; }
+        .bg-pass { background-color: #2e7d32; }
+        .bg-fail { background-color: #d32f2f; }
+        .stat-box span { font-size: 0.9rem; font-weight: 300; }
+        .stat-box b { font-size: 1.5rem; }
+
+        /* Data Table (Right) */
+        .data-zone { flex: 1; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background-color: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; color: #555; }
+        td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
+        .satis { color: #1e8e3e; font-weight: bold; background-color: #e6f4ea; border-radius: 4px; }
+        .ques { color: #f9ab00; font-weight: bold; background-color: #fef7e0; }
+        .unsatis { color: #d93025; font-weight: bold; background-color: #feeced; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <h2 style="margin:0; color:#1a73e8; letter-spacing: 1px;">EQA DTX PERFORMANCE</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label>จาก Trial</label>
+                <select id="startTrial"></select>
+            </div>
+            <div class="control-group">
+                <label>ถึง Trial</label>
+                <select id="endTrial"></select>
+            </div>
+            <button onclick="updateData()">ประมวลผล</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="sidebar">
+            <div class="kpi-card">
+                <div class="kpi-label" style="margin-bottom: 10px;">ภาพรวมความสำเร็จ KPI</div>
+                <div class="kpi-container">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="kpi-text-center">
+                        <span id="kpiValue">0%</span>
+                        <small style="font-size: 0.7rem; color: #999;">เป้าหมาย 90%</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-box bg-pass">
+                    <span>ผ่าน (Satisfactory)</span>
+                    <b id="countPass">0</b>
+                </div>
+                <div class="stat-box bg-fail">
+                    <span>ไม่ผ่าน (Q / U)</span>
+                    <b id="countFail">0</b>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-zone">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Trial</th>
+                        <th>Result</th>
+                        <th>Target (DV)</th>
+                        <th>Bias</th>
+                        <th>Z-score</th>
+                        <th>ผลประเมิน</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS1vGDC2brV2VE_XTlVuGp81hSwpA5c8CyiDR_kK1aG9YThCWXZcc5A-ePjIti-OSSbjQZ2bqYlKo0S/pub?gid=0&single=true&output=csv';
+    let rawData = [];
+    let myChart;
+
+    function init() {
+        Papa.parse(URL, {
+            download: true, header: true, skipEmptyLines: true,
+            complete: function(res) {
+                let data = res.data.map(row => {
+                    const obj = {};
+                    Object.keys(row).forEach(k => obj[k.trim().toLowerCase()] = row[k]);
+                    return obj;
+                }).filter(r => r.trial);
+
+                // เรียงลำดับ Trial
+                rawData = data.sort((a, b) => a.trial.localeCompare(b.trial, undefined, {numeric: true}));
+                
+                const s = document.getElementById('startTrial');
+                const e = document.getElementById('endTrial');
+                rawData.forEach((r, i) => {
+                    s.add(new Option(r.trial, i));
+                    e.add(new Option(r.trial, i));
+                });
+                e.value = rawData.length - 1;
+                updateData();
+            }
+        });
+    }
+
+    function updateData() {
+        const sIdx = parseInt(document.getElementById('startTrial').value);
+        const eIdx = parseInt(document.getElementById('endTrial').value);
+        const selected = rawData.slice(Math.min(sIdx, eIdx), Math.max(sIdx, eIdx) + 1);
+
+        let pass = 0, fail = 0, html = '';
+
+        selected.forEach(item => {
+            let z = parseFloat(item['z-score'] || 0);
+            let b = parseFloat(item['bias'] || 0);
+            let absZ = Math.abs(z);
+            let status = "Unsatisfactory", css = "unsatis";
+
+            if (absZ < 2.0) { status = "Satisfactory"; css = "satis"; pass++; }
+            else if (absZ <= 3.0) { status = "Questionable"; css = "ques"; fail++; }
+            else { fail++; }
+
+            html += `<tr>
+                <td>${item.trial}</td>
+                <td>${item.result || '-'}</td>
+                <td>${item.dv || '-'}</td>
+                <td>${isNaN(b) ? '-' : b.toFixed(2)}</td>
+                <td class="${css}">${isNaN(z) ? '-' : z.toFixed(2)}</td>
+                <td><span class="${css}" style="padding: 2px 8px; border-radius: 4px;">${status}</span></td>
+            </tr>`;
+        });
+
+        document.getElementById('tableBody').innerHTML = html;
+        document.getElementById('countPass').innerText = pass;
+        document.getElementById('countFail').innerText = fail;
+
+        const kpi = selected.length > 0 ? ((pass / selected.length) * 100).toFixed(1) : 0;
+        const valElem = document.getElementById('kpiValue');
+        valElem.innerText = kpi + '%';
+        valElem.style.color = kpi >= 90 ? '#2e7d32' : '#d32f2f';
+
+        renderCircularChart(kpi);
+    }
+
+    function renderCircularChart(percent) {
+        const ctx = document.getElementById('gaugeChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        
+        const mainColor = percent >= 90 ? '#2e7d32' : '#d32f2f';
+        
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [percent, 100 - percent],
+                    backgroundColor: [mainColor, '#f0f0f0'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                cutout: '85%',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: { enabled: false },
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>

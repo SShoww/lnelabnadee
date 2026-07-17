@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sysmex CA-620 Maintenance Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Sarabun', sans-serif; padding: 25px; }
+        .main-title { color: #0f5132; font-weight: 700; margin-bottom: 25px; text-align: center; }
+        .card-custom { background: white; border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; height: 100%; border-top: 5px solid #198754; }
+        .filter-section { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px; text-align: center; }
+        .btn-menu { border-radius: 25px; font-weight: bold; padding: 12px 30px; font-size: 1.1rem; transition: 0.3s; width: 180px; }
+        .status-badge { padding: 6px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; display: inline-block; }
+        .bg-pass { background-color: #d1e7dd; color: #0f5132; }
+        .bg-overdue { background-color: #f8d7da; color: #842029; }
+        .bg-warning { background-color: #fff3cd; color: #664d03; }
+        .table-container { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 25px; margin-top: 20px; display: none; }
+        .cell-pass { color: #198754; font-weight: bold; }
+        .cell-fail { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" style="max-width: 1200px;">
+    <h2 class="main-title">🔬 Sysmex CA-620 Maintenance Center (LAB NADEE)</h2>
+    
+    <div class="row g-4 mb-4 justify-content-center">
+        <div class="col-md-4">
+            <div class="card-custom text-center">
+                <h5 class="fw-bold text-secondary">รอบ DAILY</h5>
+                <hr class="my-2">
+                <div id="statusDaily" class="status-badge bg-overdue my-1">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุด: <span id="lastDailyDate">-</span></p>
+                <p class="text-muted small mb-0">Pass Rate สะสม: <span id="dailyPassPct" class="fw-bold text-success">0%</span></p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center" style="border-top-color: #0d6efd;">
+                <h5 class="fw-bold text-secondary">รอบ MONTHLY</h5>
+                <hr class="my-2">
+                <div id="statusMonthly" class="status-badge bg-warning my-1">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุด: <span id="lastMonthlyDate">-</span></p>
+                <p class="text-muted small mb-0">เกณฑ์: ต้องทำทุก 30 วัน</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-custom text-center" style="border-top-color: #ffc107;">
+                <h5 class="fw-bold text-secondary">รอบ PM (บำรุงรักษาใหญ่)</h5>
+                <hr class="my-2">
+                <div id="statusPM" class="status-badge bg-warning my-1">กำลังเช็คข้อมูล...</div>
+                <p class="text-muted small mt-2 mb-0">ทำล่าสุด: <span id="lastPMDate">-</span></p>
+                <p class="text-muted small mb-0">สถานะ: ตรวจสอบประวัติรอบ PM</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <h5 class="text-muted mb-3">👇 เลือกประเภทที่ต้องการเปิดดูตารางข้อมูลย้อนหลัง</h5>
+        <div class="d-flex justify-content-center flex-wrap gap-3">
+            <button class="btn btn-outline-success btn-menu" onclick="showTable('DAILY')" id="btn-DAILY">DAILY</button>
+            <button class="btn btn-outline-primary btn-menu" onclick="showTable('MONTHLY')" id="btn-MONTHLY">MONTHLY</button>
+            <button class="btn btn-outline-warning btn-menu" onclick="showTable('PM')" id="btn-PM">PM</button>
+        </div>
+    </div>
+
+    <div id="logTableContainer" class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-success mb-0">📊 ตารางบันทึกข้อมูลย้อนหลัง: <span id="txtCurrentMode" class="text-dark"></span></h4>
+            <button class="btn btn-sm btn-secondary" onclick="hideTable()">❌ ปิดตาราง</button>
+        </div>
+        <div class="table-responsive" style="max-height: 450px;">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark sticky-top" id="tableHeaders">
+                    </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // URL CSV เครื่อง CA-620
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRB_12-BI3l61a1G-6QPNOVyUKXfJh6nfMhN65VkGrGszRtsOIguEZO5PsmA_9aIgGUz_IcnzTU4bG7/pub?gid=4092146&single=true&output=csv';
+    
+    let rawData = [];
+
+    function initDashboard() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                rawData = results.data;
+                processMaintenanceCycles();
+            }
+        });
+    }
+
+    // ฟังก์ชันคำนวณและประมวลผลการดูแลตามรอบ (การ์ด 3 ใบด้านบน)
+    function processMaintenanceCycles() {
+        const today = new Date();
+        
+        let lastDaily = null;
+        let lastMonthly = null;
+        let lastPM = null;
+        
+        let totalDailyChecks = 0;
+        let passDailyChecks = 0;
+
+        rawData.forEach(row => {
+            const type = (row["Type"] || row["TYPE"] || "").toUpperCase();
+            const workDateStr = row["Work Date"] || row["Timestamp"];
+            if (!workDateStr) return;
+
+            const workDate = new Date(workDateStr);
+
+            if (type.includes("DAILY")) {
+                if (!lastDaily || workDate > lastDaily) lastDaily = workDate;
+                
+                // คิด % Pass สะสมของ DAILY
+                Object.keys(row).forEach(key => {
+                    if (key.toLowerCase().includes("item") || /^\d+\./.test(key)) {
+                        const val = (row[key] || "").trim().toLowerCase();
+                        if (val === "pass" || val === "✔") { passDailyChecks++; totalDailyChecks++; }
+                        else if (val === "fail" || val === "not done" || val === "✘") { totalDailyChecks++; }
+                    }
+                });
+            } 
+            else if (type.includes("MONTHLY")) {
+                if (!lastMonthly || workDate > lastMonthly) lastMonthly = workDate;
+            }
+            else if (type.includes("PM")) {
+                if (!lastPM || workDate > lastPM) lastPM = workDate;
+            }
+        });
+
+        // 1. ตรวจสอบรอบ DAILY
+        if (lastDaily) {
+            const diffDays = Math.floor(Math.abs(today - lastDaily) / (1000 * 60 * 60 * 24));
+            document.getElementById('lastDailyDate').innerText = lastDaily.toLocaleDateString('th-TH');
+            const dailyPct = totalDailyChecks > 0 ? Math.round((passDailyChecks / totalDailyChecks) * 100) : 0;
+            document.getElementById('dailyPassPct').innerText = dailyPct + '%';
+
+            if (diffDays <= 1) setBoxStatus('statusDaily', '✅ อัปเดตเรียบร้อย', 'bg-pass');
+            else setBoxStatus('statusDaily', `⚠️ ค้างบันทึก ${diffDays} วัน`, 'bg-overdue');
+        } else {
+            setBoxStatus('statusDaily', '❌ ไม่มีข้อมูล DAILY', 'bg-overdue');
+        }
+
+        // 2. ตรวจสอบรอบ MONTHLY
+        if (lastMonthly) {
+            const diffDays = Math.floor(Math.abs(today - lastMonthly) / (1000 * 60 * 60 * 24));
+            document.getElementById('lastMonthlyDate').innerText = lastMonthly.toLocaleDateString('th-TH');
+
+            if (diffDays <= 30) setBoxStatus('statusMonthly', '✅ ครบตามรอบเดือน', 'bg-pass');
+            else setBoxStatus('statusMonthly', `⚠️ เลทมา ${diffDays - 30} วัน`, 'bg-overdue');
+        } else {
+            setBoxStatus('statusMonthly', '📋 ไม่มีข้อมูลรายเดือน', 'bg-warning');
+        }
+
+        // 3. ตรวจสอบรอบ PM
+        if (lastPM) {
+            document.getElementById('lastPMDate').innerText = lastPM.toLocaleDateString('th-TH');
+            setBoxStatus('statusPM', '📋 มีประวัติบันทึก PM', 'bg-pass');
+        } else {
+            setBoxStatus('statusPM', '➖ ไม่มีข้อมูล PM', 'bg-warning');
+        }
+    }
+
+    function setBoxStatus(id, text, className) {
+        const el = document.getElementById(id);
+        el.innerText = text;
+        el.className = `status-badge ${className}`;
+    }
+
+    // ฟังก์ชันเปิดตารางเมื่อกดเลือกหัวข้อ
+    function showTable(type) {
+        if (rawData.length === 0) return;
+
+        // สลับสีไฮไลท์ปุ่ม
+        ['DAILY', 'MONTHLY', 'PM'].forEach(t => {
+            const btn = document.getElementById(`btn-${t}`);
+            let theme = t === 'DAILY' ? 'success' : t === 'MONTHLY' ? 'primary' : 'warning';
+            if (t === type) {
+                btn.className = `btn btn-${theme} btn-menu text-white`;
+            } else {
+                btn.className = `btn btn-outline-${theme} btn-menu`;
+            }
+        });
+
+        document.getElementById('logTableContainer').style.display = 'block';
+        document.getElementById('txtCurrentMode').innerText = type;
+
+        const headers = Object.keys(rawData[0]);
+        let headerHtml = '<tr>';
+        headers.forEach(h => { headerHtml += `<th class="text-nowrap">${h}</th>`; });
+        headerHtml += '</tr>';
+        document.getElementById('tableHeaders').innerHTML = headerHtml;
+
+        const filteredRows = rawData.filter(row => {
+            const rType = (row["Type"] || row["TYPE"] || "").toUpperCase();
+            return rType.includes(type.toUpperCase());
+        });
+
+        let bodyHtml = '';
+        if (filteredRows.length === 0) {
+            bodyHtml = `<tr><td colspan="${headers.length}" class="text-center text-muted">ไม่พบข้อมูลของหัวข้อ ${type}</td></tr>`;
+        } else {
+            [...filteredRows].reverse().forEach(row => {
+                bodyHtml += '<tr>';
+                headers.forEach(h => {
+                    let val = row[h] || '';
+                    let display = val;
+                    let check = val.trim().toLowerCase();
+                    if (check === 'pass' || check === '✔') display = '<span class="cell-pass">✔ Pass</span>';
+                    if (check === 'fail' || check === 'not done' || check === '✘') display = '<span class="cell-fail">✘ Fail</span>';
+                    bodyHtml += `<td>${display}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+        }
+        document.getElementById('tableBody').innerHTML = bodyHtml;
+        document.getElementById('logTableContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hideTable() {
+        document.getElementById('logTableContainer').style.display = 'none';
+        ['DAILY', 'MONTHLY', 'PM'].forEach(t => {
+            let theme = t === 'DAILY' ? 'success' : t === 'MONTHLY' ? 'primary' : 'warning';
+            document.getElementById(`btn-${t}`).className = `btn btn-outline-${theme} btn-menu`;
+        });
+    }
+
+    window.onload = initDashboard;
+</script>
+
+</body>
+</html>

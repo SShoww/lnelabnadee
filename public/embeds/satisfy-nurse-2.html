@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard สรุปความคิดเห็น (ปี พ.ศ.)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Sarabun', sans-serif; }
+        .header-banner { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: white; padding: 40px 0; border-radius: 0 0 30px 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .filter-card { border-radius: 15px; margin-top: -30px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .feedback-card { border: none; border-radius: 12px; transition: transform 0.2s; border-left: 6px solid; background: white; margin-bottom: 15px; }
+        .feedback-card:hover { transform: translateY(-2px); }
+        .imp-card { border-left-color: #28a745; }
+        .improve-card { border-left-color: #dc3545; }
+        .unit-badge { font-size: 0.75rem; background: #e9ecef; color: #495057; padding: 3px 8px; border-radius: 10px; }
+        .empty-state { padding: 40px; text-align: center; color: #6c757d; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="header-banner text-center">
+    <h1>📊 สรุปรายงานความพึงพอใจและการบริการ</h1>
+    <p>แยกตามปี พุทธศักราช (พ.ศ.)</p>
+</div>
+
+<div class="container mb-5">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card filter-card p-4">
+                <label for="yearFilter" class="form-label fw-bold">📅 เลือกปี พ.ศ. ที่ต้องการเรียกดู:</label>
+                <select id="yearFilter" class="form-select form-select-lg" onchange="applyFilter()">
+                    <option value="all">-- แสดงข้อมูลทุกปี --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <h4 class="text-success fw-bold mb-4">✨ สิ่งที่ท่านประทับใจ</h4>
+            <div id="impressiveContainer"></div>
+        </div>
+
+        <div class="col-md-6">
+            <h4 class="text-danger fw-bold mb-4">⚙️ สิ่งที่ควรปรับปรุง</h4>
+            <div id="improvementContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSSiHtDaxiPjbfFMlVfVAIleSWj0DUsQ3mIB08HRzjo_Icd9IIOoUmIbev5mris0piVnCerkdZ78WnM/pub?output=csv';
+    let masterData = [];
+
+    // ฟังก์ชันช่วยจัดการปี พ.ศ.
+    function convertToBE(dateString) {
+        if (!dateString) return null;
+        const parts = dateString.split('/');
+        if (parts.length < 3) return null;
+        let year = parseInt(parts[2].split(',')[0]);
+        // ถ้าปีน้อยกว่า 2500 แสดงว่าเป็น ค.ศ. ให้บวก 543
+        if (year < 2500) year += 543;
+        return year;
+    }
+
+    async function fetchData() {
+        Papa.parse(CSV_URL, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                masterData = results.data.filter(row => row['ประทับเวลา']);
+                populateYearDropdown();
+                applyFilter();
+            }
+        });
+    }
+
+    function populateYearDropdown() {
+        const yearSet = new Set();
+        masterData.forEach(row => {
+            const year = convertToBE(row['ประทับเวลา']);
+            if (year) yearSet.add(year);
+        });
+
+        const dropdown = document.getElementById('yearFilter');
+        const sortedYears = Array.from(yearSet).sort((a, b) => b - a);
+        
+        sortedYears.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = `ปี พ.ศ. ${year}`;
+            dropdown.appendChild(opt);
+        });
+    }
+
+    function applyFilter() {
+        const selectedYear = document.getElementById('yearFilter').value;
+        const impBox = document.getElementById('impressiveContainer');
+        const imvBox = document.getElementById('improvementContainer');
+        
+        impBox.innerHTML = '';
+        imvBox.innerHTML = '';
+
+        let hasImp = false;
+        let hasImv = false;
+
+        masterData.forEach(row => {
+            const rowYear = convertToBE(row['ประทับเวลา']);
+            if (selectedYear !== 'all' && rowYear.toString() !== selectedYear) return;
+
+            const impText = row['สิ่งที่ท่านประทับใจ ที่ท่านได้รับการบริการ คือ'];
+            const imvText = row['สิ่งที่ท่านคิดว่า ควรมีการปรับปรุง ที่เกี่ยวกับการบริการ คือ'];
+            const unit = row['หน่วยงาน'] || 'ทั่วไป';
+            const time = row['ประทับเวลา'];
+
+            // แสดงสิ่งที่ประทับใจ
+            if (impText && impText.trim() !== '-' && impText.trim() !== '') {
+                impBox.innerHTML += createCard(impText, unit, time, 'imp-card');
+                hasImp = true;
+            }
+
+            // แสดงสิ่งที่ควรปรับปรุง
+            if (imvText && imvText.trim() !== '-' && imvText.trim() !== '') {
+                imvBox.innerHTML += createCard(imvText, unit, time, 'improve-card');
+                hasImv = true;
+            }
+        });
+
+        if (!hasImp) impBox.innerHTML = '<div class="empty-state card">ไม่มีความคิดเห็นด้านความประทับใจในปีนี้</div>';
+        if (!hasImv) imvBox.innerHTML = '<div class="empty-state card">ไม่มีความคิดเห็นด้านการปรับปรุงในปีนี้</div>';
+    }
+
+    function createCard(text, unit, time, typeClass) {
+        return `
+            <div class="card feedback-card ${typeClass} p-3 shadow-sm">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="unit-badge">${unit}</span>
+                    <small class="text-muted" style="font-size: 0.7rem;">${time}</small>
+                </div>
+                <div class="text-dark">${text}</div>
+            </div>
+        `;
+    }
+
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>

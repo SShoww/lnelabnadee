@@ -1,8 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  base: '/lnelabnadee/',
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+  server: {
+    watch: {
+      // Exclude the scratch folder which contains locked Puppeteer browser profile files
+      ignored: ['**/scratch/**', '**/archive-old-project/**']
+    }
+  }
 })

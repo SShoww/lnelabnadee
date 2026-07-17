@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Trend Dashboard - กลุ่มงานเทคนิคการแพทย์</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --danger: #ef4444; --warning: #f59e0b; --success: #22c55e; --primary: #3b82f6; --bg: #f8fafc; }
+        body { font-family: 'Sarabun', sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        
+        /* Stats Styling */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-item { background: white; padding: 20px; border-radius: 15px; text-align: center; position: relative; border: 1px solid #e2e8f0; }
+        .stat-item .val { font-size: 32px; font-weight: 800; margin: 5px 0; }
+        .indicator-bar { height: 6px; width: 100%; position: absolute; bottom: 0; left: 0; border-radius: 0 0 15px 15px; }
+
+        /* Table Styling */
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table th { background: #f1f5f9; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; font-size: 14px; }
+        .report-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+        .percent-badge { padding: 5px 10px; border-radius: 6px; font-weight: bold; color: white; min-width: 55px; display: inline-block; text-align: center; }
+        
+        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: 'Sarabun'; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card" style="padding: 15px 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 style="margin:0;">วิเคราะห์แนวโน้มความพึงพอใจรายปี</h2>
+                <p style="margin:0; color: #64748b; font-size: 14px;">กลุ่มงานเทคนิคการแพทย์ โรงพยาบาลนาดี</p>
+            </div>
+            <div id="lastUpdate" style="font-size: 12px; color: #94a3b8;">กำลังโหลดข้อมูล...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0; font-size: 18px;">📈 แนวโน้มร้อยละความพึงพอใจรวมทุกปี</h3>
+        <canvas id="yearlyTrendChart" height="70"></canvas>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-item">
+            <span style="font-size: 14px; color: #64748b;">เลือกปีที่ต้องการดู</span>
+            <select id="yearSelect" onchange="updateView()" style="margin-top: 10px;"></select>
+        </div>
+        <div class="stat-item">
+            <span style="font-size: 14px; color: #64748b;">จำนวนผู้ตอบ (n)</span>
+            <div id="respondent_count" class="val" style="color: var(--primary);">-</div>
+        </div>
+        <div class="stat-item">
+            <span style="font-size: 14px; color: #64748b;">ร้อยละความพึงพอใจ</span>
+            <div id="total_percent" class="val">-</div>
+            <div id="status_bar" class="indicator-bar"></div>
+        </div>
+        <div class="stat-item">
+            <span style="font-size: 14px; color: #64748b;">จุดวิกฤต (<80%)</span>
+            <div id="critical_count" class="val" style="color: var(--danger);">0</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px;">
+        <div class="card">
+            <h3 style="margin-top:0; font-size: 18px;">📊 คะแนนรายข้อในปีที่เลือก</h3>
+            <canvas id="topicChart" height="200"></canvas>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0; font-size: 18px;">📋 ตารางสรุปผลรายหัวข้อ</h3>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>หัวข้อการประเมิน</th>
+                            <th style="text-align: center;">ร้อยละ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcXb1J9iDNPpNk0C1Nhzo3Po7FGC-yC1r8oVFX7KM0gLAdq97IIKPHG3yI0lF7XwluPoy6jXcZlpL5/pub?output=csv';
+    
+    let yearGroups = {};
+    let trendChart, topicChart;
+
+    const topicMap = [
+        { key: "1 .อธิบายสนับสนุนวิชาการผลการตรวจได้ชัดเจน ให้คำปรึกษา/ตอบข้อสงสัย/ข้อซักถาม ด้านวิชาการทางเทคนิคการแพทย์ได้เป็นอย่างดี", display: "ข้อ 1: การอธิบายสนับสนุนวิชาการ" },
+        { key: "2. เจ้าหน้าที่มีความใส่ใจ ยิ้มแย้มให้บริการด้วยความ กระตือรือร้น เต็มใจ ให้บริการ", display: "ข้อ 2: เจ้าหน้าที่ยิ้มแย้มกระตือรือร้น" },
+        { key: "3. ผลการตรวจถูกต้องแม่นยำ มีความน่าเชื่อถือ สอดคล้องกับอาการทางคลินิก", display: "ข้อ 3: ความถูกต้องแม่นยำของผลตรวจ" },
+        { key: "4. ความรวดเร็ว ในการรายงานผลการตรวจ ได้ตามเวลาที่ประกันไว้", display: "ข้อ 4: ความรวดเร็วในการรายงานผล (ปกติ)" },
+        { key: "5. ความรวดเร็วในการรายงานผลการตรวจ ในรายที่ขอผลด่วน ", display: "ข้อ 5: ความรวดเร็วในการรายงานผล (ด่วน)" },
+        { key: "6. ความรวดเร็วในรายงานผลการตรวจ ที่มีค่าวิกฤต", display: "ข้อ 6: ความรวดเร็วในการรายงานผล (วิกฤต)" },
+        { key: "7.รายการตรวจวิเคราะห์ที่เปิดให้บริการเพียงพอต่อการดูแลผู้ป่วย", display: "ข้อ 7: รายการตรวจที่เพียงพอ" },
+        { key: "8. ความสะดวกในการติดต่อสอบถาม ตามผลการตรวจ  ", display: "ข้อ 8: ความสะดวกในการติดต่อ" }
+    ];
+
+    async function fetchData() {
+        try {
+            const response = await fetch(CSV_URL);
+            const csvText = await response.text();
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                    document.getElementById('lastUpdate').innerText = 'อัปเดต: ' + new Date().toLocaleTimeString('th-TH');
+                }
+            });
+        } catch (e) { document.getElementById('lastUpdate').innerText = 'Error loading data'; }
+    }
+
+    function processData(data) {
+        yearGroups = {};
+        data.forEach(row => {
+            const dateStr = row["ประทับเวลา"];
+            if(!dateStr) return;
+            
+            // ดึงปี ค.ศ. จาก Text (เช่น 2024)
+            let yearAD = parseInt(dateStr.split('/')[2].split(' ')[0].trim());
+            
+            // ตรวจสอบว่าถ้าเป็นปี ค.ศ. (น้อยกว่า 2400) ให้บวก 543 เพื่อเป็น พ.ศ.
+            let yearBE = yearAD < 2400 ? yearAD + 543 : yearAD;
+            
+            if(!yearGroups[yearBE]) yearGroups[yearBE] = [];
+            yearGroups[yearBE].push(row);
+        });
+
+        const select = document.getElementById('yearSelect');
+        select.innerHTML = '';
+        
+        // เรียงลำดับปี พ.ศ.
+        const sortedYears = Object.keys(yearGroups).sort((a, b) => a - b);
+        
+        // แสดงใน Dropdown โดยเอาปีล่าสุดขึ้นก่อน
+        sortedYears.slice().reverse().forEach(y => {
+            select.add(new Option("ปี พ.ศ. " + y, y));
+        });
+
+        renderTrendChart(sortedYears);
+        updateView();
+    }
+
+    function calculateStats(rows) {
+        let topicResults = topicMap.map(item => {
+            let sum = 0, count = 0;
+            rows.forEach(r => {
+                let val = parseInt(r[item.key]);
+                if(!isNaN(val)) { sum += val; count++; }
+            });
+            return { label: item.display, val: count > 0 ? ((sum/count)/5)*100 : 0 };
+        });
+        const grandAvg = topicResults.reduce((a, b) => a + b.val, 0) / topicResults.length;
+        return { topicResults, grandAvg, count: rows.length };
+    }
+
+    function getColor(p) { return p >= 90 ? '#22c55e' : (p >= 80 ? '#f59e0b' : '#ef4444'); }
+
+    function renderTrendChart(years) {
+        const trendData = years.map(y => calculateStats(yearGroups[y]).grandAvg);
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById('yearlyTrendChart'), {
+            type: 'line',
+            data: {
+                labels: years,
+                datasets: [{
+                    label: 'ร้อยละความพึงพอใจรวม',
+                    data: trendData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 6,
+                    pointBackgroundColor: trendData.map(v => getColor(v))
+                }]
+            },
+            options: { scales: { y: { min: 0, max: 105 } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateView() {
+        const year = document.getElementById('yearSelect').value;
+        const { topicResults, grandAvg, count } = calculateStats(yearGroups[year]);
+
+        document.getElementById('respondent_count').innerText = count;
+        document.getElementById('total_percent').innerText = grandAvg.toFixed(1) + "%";
+        document.getElementById('total_percent').style.color = getColor(grandAvg);
+        document.getElementById('status_bar').style.backgroundColor = getColor(grandAvg);
+        document.getElementById('critical_count').innerText = topicResults.filter(t => t.val < 80).length;
+
+        const tbody = document.getElementById('table_body');
+        tbody.innerHTML = '';
+        topicResults.forEach(item => {
+            tbody.innerHTML += `<tr>
+                <td>${item.label}</td>
+                <td style="text-align: center;"><span class="percent-badge" style="background:${getColor(item.val)}">${item.val.toFixed(1)}%</span></td>
+            </tr>`;
+        });
+
+        if(topicChart) topicChart.destroy();
+        topicChart = new Chart(document.getElementById('topicChart'), {
+            type: 'bar',
+            data: {
+                labels: topicResults.map(t => t.label.split(':')[0]),
+                datasets: [{
+                    data: topicResults.map(t => t.val),
+                    backgroundColor: topicResults.map(t => getColor(t.val)),
+                    borderRadius: 5
+                }]
+            },
+            options: { indexAxis: 'y', scales: { x: { min: 0, max: 100 } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>
+
+<!-- EMBED DIVISION -->
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Satisfaction Feedback Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Sarabun', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .header-section { background: linear-gradient(135deg, #00b09b, #96c93d); color: white; padding: 30px; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
+        .filter-box { background: white; padding: 20px; border-radius: 15px; margin-top: -50px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .feedback-list { max-height: 400px; overflow-y: auto; }
+        .badge-count { font-size: 0.9em; background-color: #e9ecef; color: #495057; }
+        .table-custom { font-size: 0.9rem; }
+        .table-custom thead { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="header-section text-center">
+    <h1>สรุปข้อเสนอแนะความพึงพอใจ (แพทย์)</h1>
+    <p>หน่วยงานเทคนิคการแพทย์ โรงพยาบาลนาดี</p>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-4 filter-box">
+            <label for="yearFilter" class="form-label fw-bold">เลือกปีงบประมาณ / ปีที่สำรวจ</label>
+            <select id="yearFilter" class="form-select">
+                <option value="all">ดูข้อมูลทั้งหมด (ทุกปี)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">รายการทดสอบที่อยากให้เปิดเพิ่ม</div>
+                <div class="card-body feedback-list" id="requestList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">สิ่งที่ท่านประทับใจ</div>
+                <div class="card-body feedback-list" id="impressionList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">สิ่งที่ควรปรับปรุง</div>
+                <div class="card-body feedback-list" id="improvementList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcXb1J9iDNPpNk0C1Nhzo3Po7FGC-yC1r8oVFX7KM0gLAdq97IIKPHG3yI0lF7XwluPoy6jXcZlpL5/pub?output=csv';
+    let allData = [];
+
+    async function fetchData() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                // กรองแถวที่เป็นค่าว่าง (มักเกิดจากหัวตารางซ้อนใน Google Sheet)
+                allData = results.data.filter(row => row['ประทับเวลา']);
+                populateYearFilter(allData);
+                updateDashboard('all');
+            }
+        });
+    }
+
+    function populateYearFilter(data) {
+        const select = document.getElementById('yearFilter');
+        const years = new Set();
+        
+        data.forEach(row => {
+            const dateStr = row['ประทับเวลา'];
+            if(dateStr) {
+                const year = dateStr.split('/')[2]?.split(',')[0].trim();
+                if(year) years.add(year);
+            }
+        });
+
+        const sortedYears = Array.from(years).sort((a, b) => b - a);
+        sortedYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = `ปี ${parseInt(year) + 543} (ค.ศ. ${year})`;
+            select.appendChild(option);
+        });
+    }
+
+    function updateDashboard(selectedYear) {
+        const requestContainer = document.getElementById('requestList');
+        const impressionContainer = document.getElementById('impressionList');
+        const improvementContainer = document.getElementById('improvementList');
+
+        // Clear current content
+        requestContainer.innerHTML = '';
+        impressionContainer.innerHTML = '';
+        improvementContainer.innerHTML = '';
+
+        const filteredData = selectedYear === 'all' 
+            ? allData 
+            : allData.filter(row => row['ประทับเวลา'].includes(selectedYear));
+
+        const categories = [
+            { id: 'รายการทดสอบที่อยากให้เปิดเพิ่มขึ้น เพื่อประสิทธิภาพในการดูแลผู้ป่วย', container: requestContainer },
+            { id: 'สิ่งที่ท่านประทับใจ ที่ท่านได้รับการบริการ คือ', container: impressionContainer },
+            { id: 'สิ่งที่ท่านคิดว่า ควรมีการปรับปรุง ที่เกี่ยวกับการบริการ คือ', container: improvementContainer }
+        ];
+
+        categories.forEach(cat => {
+            const contents = filteredData
+                .map(row => row[cat.id])
+                .filter(text => text && text.trim() !== "" && text !== "-");
+
+            if (contents.length === 0) {
+                cat.container.innerHTML = '<div class="text-center text-muted">ไม่พบข้อมูล</div>';
+            } else {
+                const listGroup = document.createElement('ul');
+                listGroup.className = 'list-group list-group-flush';
+                contents.forEach(text => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item py-3';
+                    li.innerHTML = `• ${text}`;
+                    listGroup.appendChild(li);
+                });
+                cat.container.appendChild(listGroup);
+            }
+        });
+    }
+
+    document.getElementById('yearFilter').addEventListener('change', (e) => {
+        updateDashboard(e.target.value);
+    });
+
+    fetchData();
+</script>
+
+</body>
+</html>

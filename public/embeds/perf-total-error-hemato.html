@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQAC Quality Monitor - Live Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            gap: 2.5rem;
+            align-items: stretch;
+            padding: 2rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .gauge-section {
+            flex: 1;
+            background: var(--card);
+            padding: 3rem;
+            border-radius: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto 1.5rem;
+        }
+
+        svg { transform: rotate(-90deg); width: 250px; height: 250px; }
+        circle { fill: transparent; stroke-width: 18; stroke-linecap: round; }
+        .circle-bg { stroke: #f1f5f9; }
+        .circle-progress {
+            stroke: var(--primary);
+            transition: stroke-dashoffset 1s ease-in-out, stroke 0.5s ease;
+        }
+
+        .percentage-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .percent-num { font-size: 4rem; font-weight: 800; display: block; color: var(--text-main); }
+        .percent-unit { font-size: 1.1rem; color: var(--text-sub); font-weight: 600; }
+
+        .ranking-section {
+            flex: 1.2;
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        h2 { font-size: 1.1rem; color: var(--text-main); margin-top: 0; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .badge-count { background: var(--danger); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            background: #fdfdfe;
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .rank-item:hover { transform: scale(1.02); }
+        .rank-number { font-weight: 800; color: var(--text-sub); width: 30px; font-size: 1.2rem; }
+        .rank-info { flex-grow: 1; }
+        .rank-name { font-weight: 700; display: block; font-size: 1rem; }
+        .rank-freq { font-size: 0.85rem; color: var(--danger); font-weight: 600; }
+
+        .no-fail { text-align: center; color: var(--success); padding: 3rem; font-weight: 600; }
+
+        .alert-mode .circle-progress { stroke: var(--danger); }
+        .alert-mode .percent-num { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-wrapper">
+    <div class="gauge-section" id="gauge-container">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-sub); letter-spacing: 0.15rem; margin-bottom: 1.5rem;">OVERALL PASS RATE</div>
+        <div class="progress-ring">
+            <svg>
+                <circle class="circle-bg" cx="125" cy="125" r="110"></circle>
+                <circle id="progress" class="circle-progress" cx="125" cy="125" r="110" stroke-dasharray="691.15" stroke-dashoffset="691.15"></circle>
+            </svg>
+            <div class="percentage-text">
+                <span class="percent-num" id="pct">0</span>
+                <span class="percent-unit">% PASS</span>
+            </div>
+        </div>
+        <div id="status-label" style="font-weight: 700; font-size: 0.9rem;">LOADING...</div>
+    </div>
+
+    <div class="ranking-section">
+        <h2>Top 5 Critical Tests <span class="badge-count">By Frequency</span></h2>
+        <div id="rank-list">
+            <div style="text-align: center; padding: 2rem; color: var(--text-sub);">Fetching data...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // อัปเดต URL ใหม่ตามที่ระบุ
+    const urls = {
+        tea: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1948460832&single=true&output=csv',
+        bias: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1394044833&single=true&output=csv',
+        cv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=500696314&single=true&output=csv'
+    };
+
+    async function updateData() {
+        try {
+            const [rTea, rBias, rCv] = await Promise.all([
+                fetch(urls.tea).then(r => r.text()),
+                fetch(urls.bias).then(r => r.text()),
+                fetch(urls.cv).then(r => r.text())
+            ]);
+
+            const tea = parseCSV(rTea);
+            const bias = parseCSV(rBias);
+            const cv = parseCSV(rCv);
+
+            let passCount = 0;
+            let totalValidCount = 0;
+            let failureMap = {}; 
+
+            // ตรวจสอบหัวข้อ Column (WBC, RBC, etc.)
+            const analytes = Object.keys(tea[0]).filter(k => k.toLowerCase() !== 'trial');
+
+            tea.forEach((row, idx) => {
+                analytes.forEach(test => {
+                    // ตรวจสอบว่ามีข้อมูลใน Trial นั้นๆ ครบถ้วนหรือไม่
+                    const teaRaw = tea[idx] ? tea[idx][test] : null;
+                    const biasRaw = bias[idx] ? bias[idx][test] : null;
+                    const cvRaw = cv[idx] ? cv[idx][test] : null;
+
+                    // เงื่อนไข: ต้องไม่ใช่ค่าว่าง และเป็นตัวเลขเท่านั้น
+                    if (isValidData(teaRaw) && isValidData(biasRaw) && isValidData(cvRaw)) {
+                        const teaVal = parseFloat(teaRaw);
+                        const bVal = Math.abs(parseFloat(biasRaw));
+                        const cVal = parseFloat(cvRaw);
+
+                        totalValidCount++;
+                        const currentTE = bVal + (2 * cVal);
+                        
+                        if (currentTE <= teaVal) {
+                            passCount++;
+                        } else {
+                            failureMap[test] = (failureMap[test] || 0) + 1;
+                        }
+                    }
+                    // ถ้าข้อมูลไม่ครบ (Empty) จะถูกข้ามไป ไม่นำมาแสดงผล
+                });
+            });
+
+            const finalPct = totalValidCount > 0 ? (passCount / totalValidCount) * 100 : 0;
+            updateUI(finalPct, failureMap);
+
+        } catch (err) { 
+            console.error("Data error:", err);
+            document.getElementById('status-label').innerText = "CONNECTION ERROR";
+        }
+    }
+
+    // ฟังก์ชันตรวจสอบความถูกต้องของข้อมูล (ไม่ใช่ช่องว่าง และเป็นตัวเลข)
+    function isValidData(val) {
+        return val !== undefined && val !== null && val.trim() !== "" && !isNaN(val);
+    }
+
+    function updateUI(score, failureMap) {
+        const circle = document.getElementById('progress');
+        const pctTxt = document.getElementById('pct');
+        const container = document.getElementById('gauge-container');
+        const statusLbl = document.getElementById('status-label');
+        
+        const circumference = 2 * Math.PI * 110;
+        circle.style.strokeDasharray = circumference;
+        circle.style.strokeDashoffset = circumference - (score / 100 * circumference);
+        pctTxt.innerText = score.toFixed(1);
+
+        if (score < 90) {
+            container.classList.add('alert-mode');
+            statusLbl.innerText = "ATTENTION REQUIRED";
+            statusLbl.style.color = "var(--danger)";
+        } else {
+            container.classList.remove('alert-mode');
+            statusLbl.innerText = "EXCELLENT QUALITY";
+            statusLbl.style.color = "var(--success)";
+        }
+
+        const rankList = document.getElementById('rank-list');
+        const sortedFails = Object.entries(failureMap)
+            .sort((a, b) => b[1] - a[1]) 
+            .slice(0, 5); 
+
+        if (sortedFails.length === 0) {
+            rankList.innerHTML = '<div class="no-fail">🎉 All tests passed across all trials!</div>';
+            return;
+        }
+
+        rankList.innerHTML = sortedFails.map((item, index) => `
+            <div class="rank-item">
+                <div class="rank-number">#${index + 1}</div>
+                <div class="rank-info">
+                    <span class="rank-name">${item[0]}</span>
+                    <span class="rank-freq">Failed ${item[1]} times</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function parseCSV(csv) {
+        const rows = csv.split('\n').filter(r => r.trim()).map(r => r.split(','));
+        const headers = rows[0].map(h => h.trim());
+        return rows.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((h, i) => {
+                if(row[i] !== undefined) obj[h] = row[i].trim();
+            });
+            return obj;
+        });
+    }
+
+    updateData();
+    setInterval(updateData, 300000); 
+</script>
+
+</body>
+</html>
+
+<!-- EMBED DIVISION -->
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQAC Quality Control Dashboard (Updated)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; background: #f8f9fa; padding: 20px; border-radius: 10px; }
+        .control-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 8px; color: #555; }
+        select { padding: 10px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px; }
+        .chart-container { position: relative; height: 55vh; width: 100%; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { padding: 15px; background: #eef2f7; border-left: 5px solid #3498db; border-radius: 5px; text-align: center; }
+        .card h3 { margin: 0; font-size: 14px; color: #7f8c8d; }
+        .card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .status-pass { color: #27ae60 !important; }
+        .status-fail { color: #e74c3c !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 EQAC Performance Dashboard</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="testSelect">เลือกรายการทดสอบ (Test):</label>
+            <select id="testSelect" onchange="handleTestChange()">
+                <option value="">-- กำลังโหลดข้อมูล --</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="trialSelect">เลือกงวดการทดสอบ (Trial):</label>
+            <select id="trialSelect" onchange="updateCharts()">
+                <option value="">-- กรุณาเลือก Test ก่อน --</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="summarySection" class="summary-cards"></div>
+
+    <div class="chart-container">
+        <canvas id="mainChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // อัพเดท URL ใหม่ตามที่คุณระบุ
+    const urls = {
+        tea: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1948460832&single=true&output=csv',
+        bias: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1394044833&single=true&output=csv',
+        cv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=500696314&single=true&output=csv'
+    };
+
+    let rawData = { tea: [], cv: [], bias: [] };
+    let myChart = null;
+
+    async function fetchData() {
+        const fetchCSV = (url) => new Promise(resolve => {
+            Papa.parse(url, { 
+                download: true, 
+                header: true, 
+                dynamicTyping: true, 
+                skipEmptyLines: true,
+                complete: results => resolve(results.data) 
+            });
+        });
+
+        try {
+            const [tea, bias, cv] = await Promise.all([
+                fetchCSV(urls.tea),
+                fetchCSV(urls.bias),
+                fetchCSV(urls.cv)
+            ]);
+            
+            rawData.tea = tea;
+            rawData.bias = bias;
+            rawData.cv = cv;
+
+            initTestFilter();
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google Sheets");
+        }
+    }
+
+    function initTestFilter() {
+        if (rawData.tea.length === 0) return;
+        const tests = Object.keys(rawData.tea[0]).filter(k => k !== 'Trial');
+        const testSelect = document.getElementById('testSelect');
+        testSelect.innerHTML = tests.map(t => `<option value="${t}">${t}</option>`).join('');
+        handleTestChange();
+    }
+
+    // ฟังก์ชันกรอง Trial ที่ไม่มีข้อมูลของ Test นั้นๆ
+    function handleTestChange() {
+        const selectedTest = document.getElementById('testSelect').value;
+        const trialSelect = document.getElementById('trialSelect');
+        
+        // กรองเฉพาะ Trial ที่มีข้อมูลครบ (ไม่เป็น null, undefined หรือว่าง)
+        const validTrials = rawData.tea.filter(row => {
+            const trialVal = row.Trial;
+            const teaVal = row[selectedTest];
+            // ตรวจสอบใน Bias และ CV ด้วยว่ามีข้อมูลไหม
+            const trialIdxInBias = rawData.bias.findIndex(b => b.Trial == trialVal);
+            const trialIdxInCV = rawData.cv.findIndex(c => c.Trial == trialVal);
+            
+            return teaVal !== null && teaVal !== "" && trialIdxInBias !== -1 && trialIdxInCV !== -1;
+        }).map(row => row.Trial);
+
+        trialSelect.innerHTML = `<option value="ALL">ดูทุก Trial ที่มีข้อมูล (เปรียบเทียบความก้าวหน้า)</option>` + 
+                               validTrials.map(t => `<option value="${t}">Trial: ${t}</option>`).join('');
+        
+        updateCharts();
+    }
+
+    function calculateTE(bias, cv) {
+        return Math.abs(bias || 0) + (2 * (cv || 0));
+    }
+
+    function updateCharts() {
+        const selectedTest = document.getElementById('testSelect').value;
+        const selectedTrial = document.getElementById('trialSelect').value;
+        const ctx = document.getElementById('mainChart').getContext('2d');
+
+        if (!selectedTest) return;
+        if (myChart) myChart.destroy();
+
+        let labels = [];
+        let teData = [];
+        let teaData = [];
+
+        if (selectedTrial === "ALL") {
+            // ดึงเฉพาะ Trial ที่มีข้อมูลของ Test นี้เท่านั้น
+            const validData = rawData.tea.filter(d => d[selectedTest] !== null && d[selectedTest] !== "");
+            
+            labels = validData.map(d => "Trial " + d.Trial);
+            teaData = validData.map(d => d[selectedTest]);
+            teData = validData.map(d => {
+                const bRow = rawData.bias.find(b => b.Trial == d.Trial);
+                const cRow = rawData.cv.find(c => c.Trial == d.Trial);
+                const b = bRow ? bRow[selectedTest] : 0;
+                const c = cRow ? cRow[selectedTest] : 0;
+                return calculateTE(b, c);
+            });
+
+            renderChart(ctx, 'line', labels, teData, teaData, `แนวโน้ม Performance: ${selectedTest}`);
+        } else {
+            // แสดงผลราย Trial เฉพาะรายการที่มีค่า
+            const trialIdx = rawData.tea.findIndex(d => d.Trial == selectedTrial);
+            const trialIdxBias = rawData.bias.findIndex(d => d.Trial == selectedTrial);
+            const trialIdxCV = rawData.cv.findIndex(d => d.Trial == selectedTrial);
+
+            // กรองเฉพาะ Test ที่มีข้อมูลใน Trial นี้
+            labels = Object.keys(rawData.tea[0]).filter(k => k !== 'Trial' && rawData.tea[trialIdx][k] !== null);
+            teaData = labels.map(t => rawData.tea[trialIdx][t]);
+            teData = labels.map(t => {
+                const b = rawData.bias[trialIdxBias] ? rawData.bias[trialIdxBias][t] : 0;
+                const c = rawData.cv[trialIdxCV] ? rawData.cv[trialIdxCV][t] : 0;
+                return calculateTE(b, c);
+            });
+
+            renderChart(ctx, 'bar', labels, teData, teaData, `สรุปผลการทดสอบ Trial ${selectedTrial}`);
+        }
+        
+        updateSummary(selectedTest, selectedTrial);
+    }
+
+    function renderChart(ctx, type, labels, te, tea, title) {
+        myChart = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [
+                    { 
+                        label: 'Total Error (TE)', 
+                        data: te, 
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)', 
+                        borderColor: '#3498db', 
+                        borderWidth: 2, 
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 5
+                    },
+                    { 
+                        label: 'Allowable Error (TEa)', 
+                        data: tea, 
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)', 
+                        borderColor: '#e74c3c', 
+                        borderWidth: 2, 
+                        borderDash: [5, 5], 
+                        fill: true 
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    title: { display: true, text: title, font: { size: 18, weight: 'bold' } },
+                    legend: { position: 'bottom' }
+                },
+                scales: { 
+                    y: { beginAtZero: true, title: { display: true, text: 'Percentage (%)' } } 
+                }
+            }
+        });
+    }
+
+    function updateSummary(test, trial) {
+        const summary = document.getElementById('summarySection');
+        if (trial === "ALL" || !trial) {
+            summary.innerHTML = `<div class="card" style="grid-column: 1/-1"><h3>โหมดการแสดงผล</h3><p>แสดงการเปรียบเทียบค่า TE และ TEa Limit เฉพาะงวดที่มีข้อมูลบันทึกไว้</p></div>`;
+            return;
+        }
+        
+        const tIdx = rawData.tea.findIndex(d => d.Trial == trial);
+        const bIdx = rawData.bias.findIndex(d => d.Trial == trial);
+        const cIdx = rawData.cv.findIndex(d => d.Trial == trial);
+
+        const bValue = rawData.bias[bIdx] ? rawData.bias[bIdx][test] : 0;
+        const cValue = rawData.cv[cIdx] ? rawData.cv[cIdx][test] : 0;
+        const te = calculateTE(bValue, cValue);
+        const tea = rawData.tea[tIdx][test];
+        const statusClass = te <= tea ? 'status-pass' : 'status-fail';
+
+        summary.innerHTML = `
+            <div class="card"><h3>รายการที่เลือก</h3><p>${test}</p></div>
+            <div class="card"><h3>Total Error (TE)</h3><p>${te.toFixed(2)}%</p></div>
+            <div class="card"><h3>TEa Limit</h3><p>${tea.toFixed(2)}%</p></div>
+            <div class="card"><h3>สถานะ</h3><p class="${statusClass}">${te <= tea ? 'ผ่าน (PASS)' : 'ไม่ผ่าน (FAIL)'}</p></div>
+        `;
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>

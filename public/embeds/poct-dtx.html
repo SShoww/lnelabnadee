@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POCT Quality Control Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        header {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
+        
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid #3b82f6;
+        }
+        .card.success { border-left-color: #10b981; }
+        .card.danger { border-left-color: #ef4444; }
+        .card h3 { margin: 0 0 10px 0; color: #666; font-size: 14px; text-transform: uppercase; }
+        .card .value { font-size: 28px; font-weight: bold; color: #111827; }
+
+        /* Search Section */
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Sarabun', sans-serif;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Result Section */
+        .search-result {
+            display: none;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .search-result h2 { margin-top: 0; color: #1e40af; font-size: 18px; }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        /* Table Style */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow-x: auto;
+            padding: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background-color: #f9fafb;
+            color: #4b5563;
+            font-weight: 600;
+        }
+        tr:hover { background-color: #f3f4f6; }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-success { background-color: #d1fae5; color: #065f46; }
+        .badge-danger { background-color: #fee2e2; color: #991b1b; }
+        
+        .z-score {
+            font-weight: 500;
+        }
+        .z-normal { color: #10b981; }
+        .z-warning { color: #f59e0b; font-weight: bold; }
+        .z-danger { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>POCT Control Logs & Z-Score Dashboard</h1>
+        <p>ระบบติดตามคุณภาพเครื่องตรวจ ณ จุดดูแลผู้ป่วย (ข้อมูลวันที่ 17-18 พฤษภาคม 2026)</p>
+    </header>
+
+    <div class="summary-grid">
+        <div class="card">
+            <h3>เครื่องตรวจทั้งหมด</h3>
+            <div class="value" id="total-devices">81</div>
+        </div>
+        <div class="card success">
+            <h3>ผลสภาพ: ผ่าน</h3>
+            <div class="value" id="pass-devices">80</div>
+        </div>
+        <div class="card danger">
+            <h3>ผลสภาพ: ไม่ผ่าน</h3>
+            <div class="value" id="fail-devices">1</div>
+        </div>
+        <div class="card" style="border-left-color: #8b5cf6;">
+            <h3>จำนวนหน่วยงาน (รพ.สต.)</h3>
+            <div class="value">16</div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <label for="device-search" style="font-weight: 600; min-width: 120px;">ค้นหาตาม Serial:</label>
+        <input type="text" id="device-search" placeholder="พิมพ์ Serial Number เพื่อดูข้อมูลรายเครื่องและค่า Z-Score..." oninput="searchDevice()">
+    </div>
+
+    <div id="search-result-section" class="search-result">
+        <h2>🔍 ผลการวิเคราะห์รายเครื่อง</h2>
+        <div id="result-content" class="result-grid">
+            </div>
+    </div>
+
+    <div class="table-container">
+        <h2 style="padding: 10px 15px; margin: 0; font-size: 18px; color: #1f2937;">📊 ตารางเครื่องตรวจและค่า Z-Score ทั้งหมด</h2>
+        <table id="poct-table">
+            <thead>
+                <tr>
+                    <th>วันที่-เวลา</th>
+                    <th>หน่วยงาน (รพ.สต.)</th>
+                    <th>Serial Number</th>
+                    <th>ผลสภาพ</th>
+                    <th>L0 (Z-Score)</th>
+                    <th>L1 (Z-Score)</th>
+                    <th>L2 (Z-Score)</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ข้อมูลดิบจาก CSV
+    const rawData = [
+        ["18/5/2026, 9:30:14","สำพันตา","404R20054C0","ผ่าน",37,106,325],
+        ["18/5/2026, 9:30:55","สำพันตา","404R200546B","ผ่าน",37,108,317],
+        ["18/5/2026, 9:31:25","สำพันตา","4048200C0DD","ผ่าน",38,114,334],
+        ["18/5/2026, 9:36:11","คลองตาหมื่น","404R2005479","ผ่าน",39,107,329],
+        ["18/5/2026, 9:36:43","คลองตาหมื่น","404R2011A39","ผ่าน",34,101,300],
+        ["18/5/2026, 9:37:13","คลองตาหมื่น","404R200D481","ผ่าน",35,104,323],
+        ["18/5/2026, 9:37:45","คลองตาหมื่น","404R200543D","ผ่าน",35,105,313],
+        ["18/5/2026, 9:42:18","ด่านตระกั่ว","404R20119D7","ผ่าน",39,113,343],
+        ["18/5/2026, 9:42:51","ด่านตระกั่ว","404R200813B","ผ่าน",39,118,329],
+        ["18/5/2026, 9:43:17","ด่านตระกั่ว","404R2011A04","ผ่าน",38,114,327],
+        ["18/5/2026, 9:43:40","ด่านตระกั่ว","404R2011101","ผ่าน",38,118,351],
+        ["18/5/2026, 9:45:08","หนองตาแบก","404R200777C","ผ่าน",38,103,318],
+        ["18/5/2026, 9:48:41","หนองตาแบก","404R200DAFF","ผ่าน",41,118,334],
+        ["18/5/2026, 9:49:21","หนองตาแบก","404R2005434","ผ่าน",39,111,342],
+        ["18/5/2026, 9:57:58","เขาขาด","404R2012434","ผ่าน",37,113,334],
+        ["18/5/2026, 9:58:39","เขาขาด","404R200C0DE","ผ่าน",37,104,324],
+        ["18/5/2026, 9:59:09","เขาขาด","404R200542D","ผ่าน",38,110,341],
+        ["18/5/2026, 10:00:39","เขาขาด","404R200DA30","ผ่าน",35,107,345],
+        ["18/5/2026, 10:01:14","เขาขาด","404R200544F","ผ่าน",37,107,346],
+        ["18/5/2026, 10:01:41","เขาขาด","404R200F267","ผ่าน",36,111,306],
+        ["18/5/2026, 10:06:42","ท่าสะตือ","404R20076C5","ผ่าน",37,112,320],
+        ["18/5/2026, 10:07:16","ท่าสะตือ","404R20110E3","ผ่าน",37,112,334],
+        ["18/5/2026, 10:07:44","ท่าสะตือ","404R20110FE","ผ่าน",37,109,322],
+        ["18/5/2026, 10:08:22","ท่าสะตือ","404R20076BB","ผ่าน",37,110,335],
+        ["18/5/2026, 10:12:06","ก.ม.80","404R20076DA","ผ่าน",38,108,319],
+        ["18/5/2026, 10:12:40","ก.ม.80","404R2005466","ผ่าน",38,114,326],
+        ["18/5/2026, 10:13:14","ก.ม.80","404R200F278","ผ่าน",38,108,329],
+        ["18/5/2026, 10:13:47","ก.ม.80","404R200702B","ผ่าน",40,105,343],
+        ["18/5/2026, 10:18:58","สะพานหิน","404R200F25F","ผ่าน",36,108,321],
+        ["18/5/2026, 10:19:28","สะพานหิน","404R2005460","ผ่าน",37,107,321],
+        ["18/5/2026, 10:19:57","สะพานหิน","404R2005283","ผ่าน",37,110,313],
+        ["18/5/2026, 10:20:29","สะพานหิน","404R20076B6","ผ่าน",37,111,315],
+        ["18/5/2026, 10:21:49","โคกกระจง","404R2015442","ผ่าน",39,112,350],
+        ["18/5/2026, 10:22:14","โคกกระจง","404R201545D","ผ่าน",36,106,316],
+        ["18/5/2026, 10:22:45","โคกกระจง","404R20119FF","ผ่าน",36,108,320],
+        ["18/5/2026, 10:23:37","โคกกระจง","404R200543F","ผ่าน",35,101,308],
+        ["18/5/2026, 10:27:02","ขุนศรี","404R200F27B","ผ่าน",38,111,365],
+        ["18/5/2026, 10:27:37","ขุนศรี","404R200D462","ผ่าน",41,117,343],
+        ["18/5/2026, 10:37:10","ขุนศรี","404R200C12F","ผ่าน",38,105,324],
+        ["18/5/2026, 10:38:30","ขุนศรี","404R2005469","ผ่าน",40,112,352],
+        ["18/5/2026, 10:40:21","หินเทิน","404R200DDD8","ผ่าน",37,106,334],
+        ["18/5/2026, 10:41:05","หินเทิน","404R200D51D","ผ่าน",39,109,333],
+        ["18/5/2026, 10:42:04","หินเทิน","404R2011D54","ผ่าน",37,106,334],
+        ["18/5/2026, 10:45:44","วังรี","404R200D4AA","ผ่าน",39,119,338],
+        ["18/5/2026, 10:46:10","วังรี","404R2005492","ผ่าน",42,124,351],
+        ["18/5/2026, 10:46:44","วังรี","404R2016341","ผ่าน",40,118,347],
+        ["18/5/2026, 10:48:50","ทุ่งโพธิ์","404R200D829","ผ่าน",38,111,326],
+        ["18/5/2026, 10:49:25","ทุ่งโพธิ์","404R200868B","ผ่าน",40,112,330],
+        ["18/5/2026, 10:49:55","ทุ่งโพธิ์","404R200D818","ผ่าน",38,109,328],
+        ["18/5/2026, 10:50:22","ทุ่งโพธิ์","404R2016DFD","ผ่าน",38,111,317],
+        ["18/5/2026, 10:50:42","ทุ่งโพธิ์","404R201408A","ผ่าน",37,109,327],
+        ["18/5/2026, 10:51:05","ทุ่งโพธิ์","404R201596F","ผ่าน",38,118,324],
+        ["18/5/2026, 10:51:30","ทุ่งโพธิ์","404R2014679","ผ่าน",38,113,349],
+        ["18/5/2026, 10:56:13","บุสูง","404R201089E","ผ่าน",35,104,321],
+        ["18/5/2026, 10:56:46","บุสูง","404R2005464","ผ่าน",35,103,308],
+        ["18/5/2026, 10:57:12","บุสูง","404T1004DE4","ผ่าน",33,97,309],
+        ["17/5/2026, 16:05:51","นาดี","404R201102F","ผ่าน",35,107,300],
+        ["18/5/2026, 11:00:53","นาดี","404R2017385","ผ่าน",38,111,317],
+        ["18/5/2026, 11:02:05","นาดี","404R201163D (อสม ม1สำพันตา)","ผ่าน",37,108,301],
+        ["18/5/2026, 11:03:45","นาดี","404R2011645 (อสม ม1สำพันตา)","ผ่าน",38,114,327],
+        ["18/5/2026, 11:04:30","นาดี","404R200D877 (อสม ม1สำพันตา)","ผ่าน",37,111,350],
+        ["18/5/2026, 11:05:47","นาดี","404R2011196 (อสม ม.1สำพันตา)","ผ่าน",39,116,347],
+        ["18/5/2026, 11:08:49","นาดี","404R2011652 (อสม ม.2สำพันตา )","ผ่าน",36,111,311],
+        ["18/5/2026, 11:09:34","นาดี","404R200E4E9 (อสม ม.2สำพันตา )","ผ่าน",35,111,309],
+        ["18/5/2026, 11:10:14","นาดี","404R200D876 (อสม ม.2สำพันตา )","ผ่าน",36,107,321],
+        ["18/5/2026, 11:10:46","นาดี","404R201102E (อสม ม.2สำพันตา )","ผ่าน",36,113,322],
+        ["18/5/2026, 11:13:08","นาดี","404R2012118 (อสม ม.4 นาดี)","ผ่าน",36,116,321],
+        ["18/5/2026, 11:14:07","นาดี","404R201103E (อสม ม.4 นาดี)","ผ่าน",37,110,322],
+        ["18/5/2026, 11:15:24","นาดี","404R20111B2 (อสม ม.4 นาดี)","ผ่าน",38,109,339],
+        ["18/5/2026, 11:16:52","นาดี","404R200B2B2 (อสม ม.4 นาดี )","ผ่าน",38,109,336],
+        ["18/5/2026, 11:18:06","นาดี","404R2011028 ( อสม ม.1 นาดี)","ผ่าน",36,121,333],
+        ["18/5/2026, 11:18:49","นาดี","404R201164F (อสม ม1 นาดี)","ผ่าน",41,111,317],
+        ["18/5/2026, 11:19:28","นาดี","404R2011197 (อสม ม1 นาดี)","ผ่าน",36,122,321],
+        ["18/5/2026, 11:20:47","นาดี","404R2011021 (อสม ม.3 นาดี)","ผ่าน",36,122,339],
+        ["18/5/2026, 11:23:42","นาดี","404R201119E (อสม ม3 นาดี)","ผ่าน",39,111,343],
+        ["18/5/2026, 11:24:34","นาดี","404R200F81C (อสม ม3 นาดี)","ผ่าน",37,121,301],
+        ["18/5/2026, 13:44:16","ทับลาน","404R201738C","ผ่าน",38,104,312],
+        ["18/5/2026, 9:51:20","ทับลาน","404R200C11F","ผ่าน",37,113,331],
+        ["18/5/2026, 9:51:44","ทับลาน","404R2005456","ผ่าน",38,113,331],
+        ["18/5/2026, 9:52:35","ทับลาน","404R200C550","ผ่าน",36,115,339],
+        ["18/5/2026, 13:42:16","ทับลาน","404R200C10A","ไม่ผ่าน",null,null,null]
+    ];
+
+    // คำนวณหาค่าเฉลี่ย (Mean) และ ส่วนเบี่ยงเบนมาตรฐาน (SD) สำหรับกลุ่มที่ "ผ่าน" เพื่อนำมาหา Z-Score
+    function calculateStats(index) {
+        const values = rawData.filter(d => d[3] === "ผ่าน").map(d => d[index]);
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+        const sd = Math.sqrt(variance);
+        return { mean, sd };
+    }
+
+    const statsL0 = calculateStats(4);
+    const statsL1 = calculateStats(5);
+    const statsL2 = calculateStats(6);
+
+    // ฟังก์ชันช่วยจัดสีตามระดับ Z-score
+    function getZStyle(z) {
+        if (z === "-") return "";
+        const absZ = Math.abs(parseFloat(z));
+        if (absZ > 2.0) return "z-danger";
+        if (absZ > 1.5) return "z-warning";
+        return "z-normal";
+    }
+
+    // ประมวลผลและเตรียมข้อมูลสำหรับแสดงผล
+    const processedData = rawData.map(row => {
+        let z0 = "-", z1 = "-", z2 = "-";
+        if (row[3] === "ผ่าน") {
+            z0 = ((row[4] - statsL0.mean) / statsL0.sd).toFixed(2);
+            z1 = ((row[5] - statsL1.mean) / statsL1.sd).toFixed(2);
+            z2 = ((row[6] - statsL2.mean) / statsL2.sd).toFixed(2);
+        }
+        return {
+            time: row[0],
+            location: row[1],
+            serial: row[2],
+            status: row[3],
+            l0: row[4] || "-", z0,
+            l1: row[5] || "-", z1,
+            l2: row[6] || "-", z2
+        };
+    });
+
+    // แสดงผลข้อมูลลงตาราง
+    const tableBody = document.getElementById("table-body");
+    processedData.forEach(d => {
+        const tr = document.createElement("tr");
+        const badgeClass = d.status === "ผ่าน" ? "badge-success" : "badge-danger";
+        
+        tr.innerHTML = `
+            <td>${d.time}</td>
+            <td>${d.location}</td>
+            <td><strong>${d.serial}</strong></td>
+            <td><span class="badge ${badgeClass}">${d.status}</span></td>
+            <td>${d.l0} <span class="z-score ${getZStyle(d.z0)}">(${d.z0})</span></td>
+            <td>${d.l1} <span class="z-score ${getZStyle(d.z1)}">(${d.z1})</span></td>
+            <td>${d.l2} <span class="z-score ${getZStyle(d.z2)}">(${d.z2})</span></td>
+        `;
+        tableBody.appendChild(tr);
+    });
+
+    // ระบบค้นหาเครื่องรายตัว
+    function searchDevice() {
+        const searchInput = document.getElementById("device-search").value.trim().toLowerCase();
+        const resultSection = document.getElementById("search-result-section");
+        const resultContent = document.getElementById("result-content");
+
+        if (searchInput === "") {
+            resultSection.style.display = "none";
+            return;
+        }
+
+        // ค้นหาแบบ Partial Match
+        const matched = processedData.find(d => d.serial.toLowerCase().includes(searchInput));
+
+        if (matched) {
+            resultSection.style.display = "block";
+            const badgeClass = matched.status === "ผ่าน" ? "badge-success" : "badge-danger";
+            
+            resultContent.innerHTML = `
+                <div><strong>Serial Number:</strong> ${matched.serial}</div>
+                <div><strong>หน่วยงาน:</strong> ${matched.location}</div>
+                <div><strong>เวลาตรวจสอบ:</strong> ${matched.time}</div>
+                <div><strong>สถานะภาพ:</strong> <span class="badge ${badgeClass}">${matched.status}</span></div>
+                <div style="background:#fff; padding:10px; border-radius:8px;">
+                    <strong>Level 0:</strong> ${matched.l0} <br>
+                    <span class="z-score ${getZStyle(matched.z0)}">Z-Score: ${matched.z0}</span>
+                </div>
+                <div style="background:#fff; padding:10px; border-radius:8px;">
+                    <strong>Level 1:</strong> ${matched.l1} <br>
+                    <span class="z-score ${getZStyle(matched.z1)}">Z-Score: ${matched.z1}</span>
+                </div>
+                <div style="background:#fff; padding:10px; border-radius:8px;">
+                    <strong>Level 2:</strong> ${matched.l2} <br>
+                    <span class="z-score ${getZStyle(matched.z2)}">Z-Score: ${matched.z2}</span>
+                </div>
+            `;
+        } else {
+            resultSection.style.display = "block";
+            resultContent.innerHTML = `<div style="grid-column: 1/-1; color: #ef4444; text-align: center;">❌ ไม่พบข้อมูลเครื่องตรวจของ Serial Number นี้</div>`;
+        }
+    }
+</script>
+
+</body>
+</html>

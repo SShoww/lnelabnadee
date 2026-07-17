@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Dashboard ความพึงพอใจ - ห้องเจาะเลือด</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --danger: #ef4444; --warning: #f59e0b; --success: #22c55e; --primary: #3b82f6; --bg: #f1f5f9; }
+        body { font-family: 'Sarabun', sans-serif; background: var(--bg); padding: 20px; color: #334155; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        .header-status { display: flex; justify-content: space-between; align-items: center; }
+        .live-indicator { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--success); }
+        .dot { height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-item { background: white; padding: 25px; border-radius: 16px; text-align: center; position: relative; border: 1px solid #e2e8f0; }
+        .stat-item .val { font-size: 36px; font-weight: 800; margin: 10px 0; }
+        .indicator-bar { height: 8px; width: 100%; position: absolute; bottom: 0; left: 0; border-radius: 0 0 16px 16px; }
+
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .percent-badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; color: white; display: inline-block; min-width: 50px; text-align: center; }
+        
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div>กำลังโหลดข้อมูลจาก Google Sheets...</div></div>
+
+<div class="container">
+    <div class="card">
+        <div class="header-status">
+            <div>
+                <h1 style="margin:0;">Dashboard วิเคราะห์ความพึงพอใจผู้รับบริการ (Live Data)</h1>
+                <p style="margin:5px 0 0; color: #64748b;">ข้อมูลเชื่อมโยงจาก Google Sheets อัตโนมัติ (แสดงผลปี พ.ศ.)</p>
+            </div>
+            <div class="live-indicator">
+                <span class="dot"></span> เชื่อมต่อข้อมูลเรียบร้อย
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">แนวโน้มร้อยละความพึงพอใจรวมรายปี (พ.ศ.)</h3>
+        <canvas id="yearlyTrendChart" height="80"></canvas>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-item">
+            <h4>เลือกปีที่ต้องการดู</h4>
+            <select id="yearSelect" onchange="updateView()" style="width:100%; padding:10px; font-size:16px; border-radius:8px; font-family: 'Sarabun';"></select>
+        </div>
+        <div class="stat-item">
+            <h4>ผู้ประเมินทั้งหมด (n)</h4>
+            <div id="respondent_count" class="val" style="color: var(--primary);">-</div>
+            <small>คน ในปีที่เลือก</small>
+        </div>
+        <div class="stat-item">
+            <h4>ความพึงพอใจร้อยละ</h4>
+            <div id="total_percent" class="val">-</div>
+            <div id="status_bar" class="indicator-bar"></div>
+        </div>
+        <div class="stat-item">
+            <h4>หัวข้อที่ต้องปรับปรุง</h4>
+            <div id="critical_count" class="val" style="color: var(--danger);">0</div>
+            <small>ร้อยละต่ำกว่า 80%</small>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px;">
+        <div class="card">
+            <h3>คะแนนรายหัวข้อ (%)</h3>
+            <canvas id="topicChart" height="150"></canvas>
+        </div>
+        <div class="card">
+            <h3>สถานะรายหัวข้อ</h3>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="report-table">
+                    <tbody id="table_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRUik4A8mm6FZCBkDDFJC049QRxOtrQg8OHPMCUdjIK2QsIqY_IOgddDwx3FPUS0FcAKZ2Zie8m_tHR/pub?output=csv";
+    
+    let yearGroups = {};
+    let trendChart, topicChart;
+
+    const targetTopics = [
+        "1.1 ห้องเจาะเลือดมองเห็นได้ง่ายมีป้ายชัดเจน", "1.2 สถานที่เจาะเลือดสะอาด ปลอดภัย",
+        "1.3 มีที่นั่งเพียงพอระหว่างรอรับบริการ", "2.1 ระบบเรียกคิวรับบริการ ชัดเจน เข้าใจง่าย",
+        "2.2 บริการอย่างเป็นระบบ และท่านได้รับบริการตามลำดับก่อนหลัง", "2.3 ระยะเวลารอคอยในการรับบริการ รวดเร็ว ",
+        "2.4 ระยะเวลารอคอย ผลการตรวจเลือด หรือสิ่งส่งตรวจอื่นๆ ", "3.1 กิริยามารยาทและการแต่งกาย ของเจ้าหน้าที่ให้บริการ",
+        "3.2 เจ้าหน้าที่ให้บริการด้วยความเต็มใจ พูดจาไพเราะชัดเจน", "3.3 เมื่อมีข้อสงสัยหรือต้องการความช่วยเหลือ ท่านได้รับการตอบสนอง อย่างดี"
+    ];
+
+    window.onload = function() {
+        fetch(SHEETS_URL)
+            .then(response => response.text())
+            .then(csvData => {
+                Papa.parse(csvData, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        processData(results.data);
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                    }
+                });
+            })
+            .catch(err => {
+                alert("ไม่สามารถดึงข้อมูลจาก Google Sheets ได้");
+                console.error(err);
+            });
+    };
+
+    function processData(data) {
+        yearGroups = {};
+        data.forEach(row => {
+            const dateStr = row["ประทับเวลา"];
+            if(!dateStr) return;
+
+            // สกัดปี ค.ศ. (เช่น 2023)
+            let yearCE = dateStr.includes('/') ? dateStr.split('/')[2].split(',')[0].trim() : "Unknown";
+            
+            // แปลงเป็น พ.ศ. (บวก 543)
+            let yearBE = !isNaN(yearCE) ? (parseInt(yearCE) + 543).toString() : yearCE;
+
+            if(!yearGroups[yearBE]) yearGroups[yearBE] = [];
+            yearGroups[yearBE].push(row);
+        });
+
+        const select = document.getElementById('yearSelect');
+        select.innerHTML = '';
+        const sortedYears = Object.keys(yearGroups).sort().reverse();
+        sortedYears.forEach(y => {
+            let opt = new Option("ปี พ.ศ. " + y, y);
+            select.add(opt);
+        });
+
+        renderTrendChart(Object.keys(yearGroups).sort());
+        updateView();
+    }
+
+    function getColor(percent) {
+        if (percent >= 85) return '#22c55e';
+        if (percent >= 80) return '#f59e0b';
+        return '#ef4444';
+    }
+
+    function calculateStats(rows) {
+        let topicPercents = {};
+        targetTopics.forEach(t => {
+            let sum = 0, count = 0;
+            rows.forEach(r => {
+                let val = parseInt(r[t]);
+                if(!isNaN(val)) { sum += val; count++; }
+            });
+            topicPercents[t] = count > 0 ? ((sum / count) / 5) * 100 : 0;
+        });
+        const vals = Object.values(topicPercents);
+        const grandAvg = vals.length > 0 ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+        return { topicPercents, grandAvg, count: rows.length };
+    }
+
+    function renderTrendChart(years) {
+        const data = years.map(y => calculateStats(yearGroups[y]).grandAvg);
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById('yearlyTrendChart'), {
+            type: 'line',
+            data: {
+                labels: years.map(y => "พ.ศ. " + y), // แสดง พ.ศ. บนแกน X
+                datasets: [{
+                    label: 'ร้อยละความพึงพอใจรวม',
+                    data: data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: data.map(v => getColor(v)),
+                    pointRadius: 6
+                }]
+            },
+            options: { scales: { y: { min: 0, max: 100 } } }
+        });
+    }
+
+    function updateView() {
+        const year = document.getElementById('yearSelect').value;
+        if(!yearGroups[year]) return;
+
+        const { topicPercents, grandAvg, count } = calculateStats(yearGroups[year]);
+        
+        document.getElementById('respondent_count').innerText = count.toLocaleString();
+        document.getElementById('total_percent').innerText = grandAvg.toFixed(1) + "%";
+        document.getElementById('total_percent').style.color = getColor(grandAvg);
+        document.getElementById('status_bar').style.backgroundColor = getColor(grandAvg);
+
+        let criticals = Object.values(topicPercents).filter(v => v < 80).length;
+        document.getElementById('critical_count').innerText = criticals;
+
+        const tbody = document.getElementById('table_body');
+        tbody.innerHTML = '';
+        targetTopics.forEach(t => {
+            const p = topicPercents[t];
+            tbody.innerHTML += `<tr>
+                <td style="font-size: 13px;">${t}</td>
+                <td style="text-align:right;"><span class="percent-badge" style="background:${getColor(p)}">${p.toFixed(1)}%</span></td>
+            </tr>`;
+        });
+
+        if(topicChart) topicChart.destroy();
+        topicChart = new Chart(document.getElementById('topicChart'), {
+            type: 'bar',
+            data: {
+                labels: targetTopics.map(t => t.split(' ')[0]),
+                datasets: [{
+                    label: 'ร้อยละ',
+                    data: targetTopics.map(t => topicPercents[t]),
+                    backgroundColor: targetTopics.map(t => getColor(topicPercents[t])),
+                    borderRadius: 5
+                }]
+            },
+            options: { 
+                indexAxis: 'y',
+                scales: { x: { min: 0, max: 100 } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+</script>
+</body>
+</html>
+
+<!-- EMBED DIVISION -->
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปความคิดเห็นผู้รับบริการ - โรงพยาบาลนาดี</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; color: #333; }
+        .header-section { background: linear-gradient(135deg, #1a759f, #34a0a4); color: white; padding: 2rem 0; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; height: 100%; }
+        .card:hover { transform: translateY(-5px); }
+        .text-impress { color: #2d6a4f; font-weight: 600; border-left: 4px solid #52b788; padding-left: 10px; }
+        .text-improve { color: #bc4749; font-weight: 600; border-left: 4px solid #ef233c; padding-left: 10px; }
+        .list-group-item { border: none; margin-bottom: 8px; border-radius: 8px !important; background-color: #fff; }
+        .badge-year { font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 20px; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 200px; }
+        .empty-msg { color: #999; font-style: italic; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header-section text-center">
+    <div class="container">
+        <h1>Dashboard สรุปข้อคิดเห็นผู้รับบริการ</h1>
+        <p>งานเทคนิคการแพทย์ โรงพยาบาลนาดี</p>
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-4">
+                <select id="yearFilter" class="form-select form-select-lg" onchange="filterData()">
+                    <option value="all">เลือกดูทุกปี</option>
+                    <option value="2565">ปี พ.ศ. 2565</option>
+                    <option value="2566">ปี พ.ศ. 2566</option>
+                    <option value="2567">ปี พ.ศ. 2567</option>
+                    <option value="2568">ปี พ.ศ. 2568</option>
+                    <option value="2569">ปี พ.ศ. 2569</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div id="loading" class="loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <span class="ms-3">กำลังดึงข้อมูลล่าสุดจากระบบ...</span>
+    </div>
+
+    <div id="dashboardContent" style="display: none;">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-white py-3">
+                        <h4 class="text-impress mb-0">❤️ สิ่งที่ท่านประทับใจ</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="impressList" class="list-group"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-white py-3">
+                        <h4 class="text-improve mb-0">🛠️ สิ่งที่ควรปรับปรุง</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="improveList" class="list-group"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUik4A8mm6FZCBkDDFJC049QRxOtrQg8OHPMCUdjIK2QsIqY_IOgddDwx3FPUS0FcAKZ2Zie8m_tHR/pub?output=csv';
+    let allData = [];
+
+    // ฟังก์ชันตรวจสอบว่าข้อความเป็นข้อความว่างหรือไม่
+    function isValidComment(text) {
+        if (!text) return false;
+        const ignoreWords = ['ไม่มี', 'ไม่มีค่ะ', 'ไม่มีครับ', '-', '..', '...', 'ไม่มีข้อเสนอแนะ'];
+        const cleanText = text.trim();
+        return cleanText.length > 1 && !ignoreWords.includes(cleanText);
+    }
+
+    // ฟังก์ชันแปลงปี พ.ศ. จาก Timestamp
+    function getThaiYear(dateString) {
+        try {
+            const dateParts = dateString.split('/');
+            const year = parseInt(dateParts[2].split(',')[0]);
+            // ตรวจสอบว่าปีเป็น ค.ศ. หรือ พ.ศ. (ถ้า < 2500 แสดงว่าเป็น ค.ศ.)
+            return year < 2500 ? (year + 543).toString() : year.toString();
+        } catch (e) {
+            return "ไม่ระบุ";
+        }
+    }
+
+    async function fetchData() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                allData = results.data;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                filterData();
+            },
+            error: function(err) {
+                alert('ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Publish ของ Google Sheets');
+            }
+        });
+    }
+
+    function filterData() {
+        const selectedYear = document.getElementById('yearFilter').value;
+        const impressList = document.getElementById('impressList');
+        const improveList = document.getElementById('improveList');
+        
+        impressList.innerHTML = '';
+        improveList.innerHTML = '';
+
+        let countImpress = 0;
+        let countImprove = 0;
+
+        allData.forEach(row => {
+            const timestamp = row['ประทับเวลา'];
+            if (!timestamp) return;
+
+            const thaiYear = getThaiYear(timestamp);
+            const impressText = row['สิ่งที่ท่านประทับใจ ที่ท่านได้รับการบริการ คือ'];
+            const improveText = row['สิ่งที่ท่านคิดว่า ควรมีการปรับปรุง ที่เกี่ยวกับการบริการ คือ'];
+
+            // กรองตามปี
+            if (selectedYear === 'all' || thaiYear === selectedYear) {
+                
+                // แสดงสิ่งที่ประทับใจ
+                if (isValidComment(impressText)) {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action shadow-sm';
+                    item.innerHTML = `<small class="text-muted">ปี ${thaiYear}</small><br>${impressText}`;
+                    impressList.appendChild(item);
+                    countImpress++;
+                }
+
+                // แสดงสิ่งที่ควรปรับปรุง
+                if (isValidComment(improveText)) {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action shadow-sm';
+                    item.innerHTML = `<small class="text-muted">ปี ${thaiYear}</small><br>${improveText}`;
+                    improveList.appendChild(item);
+                    countImprove++;
+                }
+            }
+        });
+
+        if (countImpress === 0) impressList.innerHTML = '<div class="empty-msg">ไม่มีข้อมูลความประทับใจในช่วงเวลานี้</div>';
+        if (countImprove === 0) improveList.innerHTML = '<div class="empty-msg">ไม่มีข้อมูลข้อเสนอแนะในช่วงเวลานี้</div>';
+    }
+
+    // เริ่มต้นโหลดข้อมูล
+    fetchData();
+</script>
+
+</body>
+</html>

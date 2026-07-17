@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hematology Sigma Quality Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 1100px; margin: auto; }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-family: 'Kanit';
+            outline: none;
+        }
+
+        .dashboard-wrapper {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .top-panels {
+            display: flex;
+            gap: 50px;
+        }
+
+        .left-panel { flex: 1; text-align: center; border-right: 1px solid #eee; padding-right: 40px; }
+        .right-panel { flex: 1.2; text-align: left; }
+
+        .bottom-panel {
+            border-top: 1px solid #eee;
+            padding-top: 30px;
+        }
+
+        h2 { color: #2c3e50; margin-top: 0; font-size: 1.5rem; }
+        h3 { color: #7f8c8d; font-size: 1.1rem; margin-bottom: 20px; }
+
+        .chart-container { position: relative; width: 250px; height: 250px; margin: auto; }
+        .line-chart-container { position: relative; width: 100%; height: 300px; margin-top: 15px; }
+        .kpi-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .kpi-value { font-size: 3.5rem; font-weight: bold; line-height: 1; }
+        .kpi-unit { font-size: 1rem; color: #95a5a6; }
+        
+        .test-list { list-style: none; padding: 0; }
+        .test-item {
+            background: #fff5f5;
+            border-left: 4px solid var(--danger-color);
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.5s ease-out;
+        }
+        .test-name { font-weight: 600; color: #c0392b; }
+        .fail-count { font-size: 0.85rem; color: #7f8c8d; }
+
+        #loading { font-size: 1.2rem; color: #3498db; font-weight: bold; text-align: center; padding: 20px; }
+        #data-status { font-size: 0.85rem; color: #e67e22; margin-bottom: 10px; font-weight: 300; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (max-width: 768px) {
+            .top-panels { flex-direction: column; gap: 20px; }
+            .left-panel { border-right: none; border-bottom: 1px solid #eee; padding-right: 0; padding-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="filter-section">
+        <label>ช่วงข้อมูล:</label>
+        <select id="startMonth"></select>
+        <span>ถึง</span>
+        <select id="endMonth"></select>
+        <button onclick="applyFilter()" style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 10px; cursor: pointer;">ประมวลผล</button>
+    </div>
+
+    <div id="loading">📊 กำลังดึงข้อมูลจาก Google Sheets...</div>
+
+    <div class="dashboard-wrapper" id="dashboard-content" style="display:none;">
+        <div class="top-panels">
+            <div class="left-panel">
+                <h2>Overall Sigma</h2>
+                <div id="data-status"></div>
+                <div class="chart-container">
+                    <canvas id="sigmaDonut"></canvas>
+                    <div class="kpi-overlay">
+                        <span class="kpi-value" id="percentText">0</span><br>
+                        <span class="kpi-unit">% ผ่านเกณฑ์</span>
+                    </div>
+                </div>
+                <p id="totalCount" style="color:#95a5a6; margin-top:15px;"></p>
+                <p id="summaryText" style="font-size: 0.9rem; font-weight: 300;"></p>
+            </div>
+
+            <div class="right-panel" id="improvement-content">
+                <h2>Tests to Improve</h2>
+                <h3>รายการที่ค่า Sigma &lt; 4 บ่อยที่สุด</h3>
+                <ul class="test-list" id="bad-tests-list"></ul>
+                <p style="font-size: 0.8rem; color: #bdc3c7;">* อิงจากเกณฑ์ Sigma &lt; 4.0 (Marginal/Poor)</p>
+            </div>
+        </div>
+
+        <div class="bottom-panel" id="trend-content">
+            <h3>Trend of Pass Rate (%) by Trial</h3>
+            <div class="line-chart-container">
+                <canvas id="sigmaLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const urls = {
+        tea: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1948460832&single=true&output=csv',
+        bias: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1394044833&single=true&output=csv',
+        cv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=500696314&single=true&output=csv'
+    };
+
+    let rawData = { tea: [], bias: [], cv: [] };
+    let chartInstance = null;
+    let lineChartInstance = null;
+
+    async function fetchData() {
+        try {
+            const results = await Promise.all(Object.values(urls).map(url => 
+                new Promise((res, rej) => Papa.parse(url, {
+                    download: true, 
+                    header: true, 
+                    dynamicTyping: true, 
+                    skipEmptyLines: true,
+                    complete: res, 
+                    error: rej
+                }))
+            ));
+            
+            rawData.tea = results[0].data;
+            rawData.bias = results[1].data;
+            rawData.cv = results[2].data;
+
+            // ดึงรายชื่อรอบ/Trial ทั้งหมดที่มีอยู่จริงในคอลัมน์แรก
+            const trials = rawData.tea.map(r => r[Object.keys(r)[0]]).filter(t => t !== null && t !== undefined && t !== "");
+            
+            const start = document.getElementById('startMonth');
+            const end = document.getElementById('endMonth');
+            
+            start.innerHTML = '';
+            end.innerHTML = '';
+
+            trials.forEach((t, i) => {
+                start.innerHTML += `<option value="${t}">${t}</option>`;
+                end.innerHTML += `<option value="${t}" ${i === trials.length-1 ? 'selected' : ''}>${t}</option>`;
+            });
+            
+            applyFilter();
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loading').innerText = "❌ ไม่สามารถโหลดข้อมูลได้ กรุณาเช็คการแชร์ไฟล์";
+        }
+    }
+
+    function applyFilter() {
+        const startVal = document.getElementById('startMonth').value;
+        const endVal = document.getElementById('endMonth').value;
+        
+        const trials = rawData.tea.map(r => String(r[Object.keys(r)[0]]));
+        const startIndex = trials.indexOf(String(startVal));
+        const endIndex = trials.indexOf(String(endVal));
+
+        if(startIndex > endIndex) {
+            alert("รอบเริ่มต้นต้องไม่มากกว่ารอบสิ้นสุด");
+            return;
+        }
+
+        analyze(startIndex, endIndex);
+    }
+
+    function analyze(startIndex, endIndex) {
+        let totalEntries = 0;
+        let passEntries = 0;
+        let skippedRows = 0;
+        let failureMap = {};
+        
+        let lineLabels = [];
+        let lineData = [];
+
+        for (let i = startIndex; i <= endIndex; i++) {
+            const tRow = rawData.tea[i];
+            const bRow = rawData.bias[i];
+            const cRow = rawData.cv[i];
+
+            if(!tRow || !bRow || !cRow) {
+                skippedRows++;
+                continue;
+            }
+
+            const trialLabel = tRow[Object.keys(tRow)[0]];
+            if (trialLabel === null || trialLabel === undefined || trialLabel === "") continue;
+
+            let rowTotal = 0;
+            let rowPass = 0;
+            let rowHasData = false;
+
+            const keys = Object.keys(tRow).filter(k => !k.toLowerCase().includes('trial') && !k.toLowerCase().includes('month') && k !== Object.keys(tRow)[0]);
+            
+            keys.forEach(testKey => {
+                const tea = tRow[testKey];
+                const bias = bRow[testKey];
+                const cv = cRow[testKey];
+
+                if (tea === null || tea === undefined || tea === "" ||
+                    bias === null || bias === undefined || bias === "" ||
+                    cv === null || cv === undefined || cv === "" || cv === 0 || isNaN(tea)) {
+                    return; 
+                }
+
+                const biasValue = Math.abs(bias);
+                const sigma = (tea - biasValue) / cv;
+                
+                totalEntries++;
+                rowTotal++;
+                rowHasData = true;
+                
+                if (sigma >= 4) {
+                    passEntries++;
+                    rowPass++;
+                } else {
+                    failureMap[testKey] = (failureMap[testKey] || 0) + 1;
+                }
+            });
+
+            if (!rowHasData) {
+                skippedRows++;
+            } else {
+                const rowRate = rowTotal > 0 ? Math.round((rowPass / rowTotal) * 100) : 0;
+                lineLabels.push(String(trialLabel));
+                lineData.push(rowRate);
+            }
+        }
+
+        const passRate = totalEntries > 0 ? Math.round((passEntries / totalEntries) * 100) : 0;
+        document.getElementById('data-status').innerText = skippedRows > 0 ? `* ข้ามข้อมูลที่ไม่สมบูรณ์ไป ${skippedRows} แถว` : '';
+        
+        const sortedFailures = Object.entries(failureMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        updateUI(passRate, totalEntries, sortedFailures, lineLabels, lineData);
+    }
+
+    function updateUI(rate, total, badTests, lineLabels, lineData) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+        
+        const color = rate < 80 ? '#e74c3c' : (rate < 95 ? '#f1c40f' : '#2ecc71');
+        document.getElementById('percentText').innerText = rate;
+        document.getElementById('percentText').style.color = color;
+        document.getElementById('totalCount').innerText = `วิเคราะห์ข้อมูลทั้งหมด ${total} จุดทดสอบ`;
+        
+        let statusMsg = "";
+        if(rate >= 95) statusMsg = "คุณภาพอยู่ในเกณฑ์ดีเยี่ยม (World Class)";
+        else if(rate >= 80) statusMsg = "คุณภาพอยู่ในเกณฑ์ดี";
+        else statusMsg = "ควรตรวจสอบและปรับปรุงกระบวนการ";
+        document.getElementById('summaryText').innerText = statusMsg;
+
+        const listEl = document.getElementById('bad-tests-list');
+        listEl.innerHTML = badTests.length > 0 ? '' : '<p style="color:green; text-align:center; padding:20px;">✅ ทุกรายการที่วิเคราะห์อยู่ในเกณฑ์มาตรฐาน (Sigma ≥ 4)</p>';
+        
+        badTests.forEach(([name, count]) => {
+            const li = document.createElement('li');
+            li.className = 'test-item';
+            li.innerHTML = `
+                <span class="test-name">${name}</span>
+                <span class="fail-count">Sigma &lt; 4 พบ ${count} ครั้ง</span>
+            `;
+            listEl.appendChild(li);
+        });
+
+        // 1. วาดกราฟวงกลม Donut
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById('sigmaDonut'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [rate, 100 - rate],
+                    backgroundColor: [color, '#f0f0f0'],
+                    borderWidth: 0,
+                    borderRadius: 15
+                }]
+            },
+            options: { 
+                cutout: '85%', 
+                plugins: { tooltip: { enabled: false } },
+                animation: { animateScale: true }
+            }
+        });
+
+        // 2. วาดกราฟเส้น Trend Line
+        if(lineChartInstance) lineChartInstance.destroy();
+        lineChartInstance = new Chart(document.getElementById('sigmaLineChart'), {
+            type: 'line',
+            data: {
+                labels: lineLabels,
+                datasets: [{
+                    label: '% ผ่านเกณฑ์',
+                    data: lineData,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.2,
+                    fill: true,
+                    pointBackgroundColor: '#3498db',
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) { return value + '%'; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>

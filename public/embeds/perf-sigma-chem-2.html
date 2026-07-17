@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Sigma Metric Dashboard (With Telegram Alert)</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 0; background-color: #f4f6f9; color: #333; }
+        .navbar { background: #1a237e; color: white; padding: 1rem 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+        .summary-wrapper { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-bottom: 4px solid #ddd; }
+        .kpi-card h3 { margin: 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        .kpi-card .value { font-size: 28px; font-weight: bold; margin: 10px 0; }
+        .kpi-card.pass { border-bottom-color: #28a745; }
+        .kpi-card.fail { border-bottom-color: #dc3545; }
+        .kpi-card.info { border-bottom-color: #1a237e; }
+        .fail-list { font-size: 13px; color: #dc3545; font-weight: bold; }
+        
+        .failed-click-badge { display: inline-block; background: #ffebee; color: #c62828; padding: 4px 10px; border-radius: 6px; margin: 3px; cursor: pointer; border: 1px solid #ffcdd2; transition: all 0.2s; }
+        .failed-click-badge:hover { background: #c62828; color: white; transform: translateY(-1px); }
+        
+        .controls { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-wrap: wrap; }
+        select { padding: 10px 20px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; min-width: 200px; outline: none; cursor: pointer; font-weight: bold; }
+        
+        .btn-ui { border: none; padding: 11px 24px; font-size: 15px; font-weight: bold; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; color: white; }
+        .btn-telegram { background-color: #0088cc; box-shadow: 0 2px 5px rgba(0,136,204,0.3); }
+        .btn-telegram:hover { background-color: #0077b3; transform: translateY(-1px); }
+        .btn-print { background-color: #2e7d32; box-shadow: 0 2px 5px rgba(46,125,50,0.3); }
+        .btn-print:hover { background-color: #1b5e20; transform: translateY(-1px); }
+        .btn-ui:active { transform: translateY(1px); }
+
+        .grid-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 25px; }
+        #opspecChart { height: 550px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .table-container { overflow-y: auto; max-height: 480px; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; position: sticky; top: 0; padding: 12px; z-index: 10; border-bottom: 2px solid #eee; }
+        td { padding: 12px; border-bottom: 1px solid #f1f1f1; text-align: center; }
+        tr.clickable-row { cursor: pointer; transition: background 0.2s; }
+        tr.clickable-row:hover { background: #f8fafc; }
+        .badge { padding: 4px 10px; border-radius: 50px; font-size: 12px; font-weight: bold; }
+        .bg-success { background: #e8f5e9; color: #2e7d32; }
+        .bg-danger { background: #ffebee; color: #c62828; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow-y: auto; }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 25px; border-radius: 16px; width: 60%; max-width: 750px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-close { font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; }
+        .modal-close:hover { color: #333; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stats-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; }
+        .stats-box .label { font-size: 12px; color: #64748b; font-weight: bold; }
+        .stats-box .val { font-size: 18px; font-weight: bold; color: #1e293b; margin-top: 5px; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #4a5568; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; background: #f8fafc; font-size: 15px; font-weight: bold; }
+        .alert-box { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+        .checklist-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .checklist-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .checklist-box h4 { margin-top: 0; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 5px; }
+        .check-item { display: block; margin-bottom: 10px; cursor: pointer; font-size: 14px; }
+        .check-item input { margin-right: 8px; }
+
+        /* CSS สำหรับ Print (ป้องกันไม่ให้กราฟทับตารางสรุปผล) */
+        @media print {
+            body { background-color: #fff; color: #000; font-size: 13px; }
+            .navbar, .controls, .btn-ui, select, button, p[style*="color: #666"] { display: none !important; } 
+            
+            .grid-layout { display: block !important; width: 100% !important; }
+            .card { border: 1px solid #ddd !important; box-shadow: none !important; padding: 20px !important; margin-bottom: 25px !important; page-break-inside: avoid; clear: both; overflow: hidden; }
+            
+            #opspecChart { width: 100% !important; height: 420px !important; overflow: hidden !important; margin-bottom: 20px; }
+            .grid-layout > .card:last-child { page-break-before: always; }
+            
+            .table-container { max-height: none !important; overflow: visible !important; width: 100% !important; }
+            table { width: 100% !important; }
+            th { position: static !important; background: #f0f0f0 !important; color: #000 !important; font-weight: bold; }
+            td, th { border: 1px solid #aaa !important; padding: 8px !important; }
+            
+            #trendChart { height: 300px !important; page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h2 style="margin:0">Laboratory Quality Dashboard</h2>
+    <h3 id="displayMonth" style="margin:0; font-weight:300;">-</h3>
+</div>
+
+<div class="container">
+    <div class="controls">
+        <label><strong>เลือกรอบการทดสอบ (Trial):</strong></label>
+        <select id="trialSelect" onchange="updateDashboard()"></select>
+
+        <button type="button" class="btn-ui btn-telegram" onclick="clickToSendTelegram()">
+            ✈️ ส่งรายงานเข้า Telegram
+        </button>
+
+        <button type="button" class="btn-ui btn-print" onclick="window.print()">
+            🖨️ พิมพ์รายงานผล (Save PDF)
+        </button>
+    </div>
+
+    <div class="summary-wrapper">
+        <div class="kpi-card info">
+            <h3>รอบเดือนที่ทดสอบ</h3>
+            <div class="value" id="valMonth" style="color: #1a237e; font-size: 24px;">-</div>
+        </div>
+        <div class="kpi-card" id="cardPassRate">
+            <h3>% รายการที่ Sigma > 4</h3>
+            <div class="value" id="valPassRate">0%</div>
+        </div>
+        <div class="kpi-card" id="cardFailedCount">
+            <h3>จำนวนที่ไม่ผ่านเกณฑ์</h3>
+            <div class="value" id="valFailedCount">0</div>
+        </div>
+        <div class="kpi-card" id="cardFailedList">
+            <h3>รายการที่ไม่ผ่าน (คลิกเพื่อวิเคราะห์)</h3>
+            <div class="fail-list" id="valFailedList" style="margin-top:10px;">-</div>
+        </div>
+    </div>
+
+    <div class="grid-layout">
+        <div class="card">
+            <div id="opspecChart"></div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0;">Sigma Metric & QGI Summary</h3>
+            <p style="font-size: 12px; color: #666; margin-top: -10px;">*คลิกรายการที่ <span style="color:#c62828; font-weight:bold;">FAIL</span> เพื่อวิเคราะห์หาสาเหตุและแนวทางแก้ไข</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Test Item</th>
+                            <th>Sigma</th>
+                            <th>QGI</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">Lab Stability Trend (Across Valid Trials)</h3>
+        <div id="trendChart" style="height: 350px;"></div>
+    </div>
+</div>
+
+<div id="correctionModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="margin:0; color:#1a237e;">🔍 Troubleshooting & Corrective Action</h3>
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="form-group">
+            <label>รายการทดสอบ</label>
+            <input type="text" id="modalInfo" class="form-control" readonly>
+        </div>
+        
+        <label style="font-weight: bold; color: #4a5568; display: block; margin-bottom: 5px;">ผลการวิเคราะห์ทางสถิติ</label>
+        <div class="stats-grid">
+            <div class="stats-box"><div class="label">TEa (%)</div><div class="val" id="mTEa">-</div></div>
+            <div class="stats-box"><div class="label">Bias (%)</div><div class="val" id="mBias">-</div></div>
+            <div class="stats-box"><div class="label">CV (%)</div><div class="val" id="mCV">-</div></div>
+            <div class="stats-box"><div class="label">Sigma</div><div class="val" id="mSigma" style="color:#c62828;">-</div></div>
+        </div>
+
+        <div class="form-group">
+            <label>ดัชนีประสิทธิภาพคุณภาพ (QGI Score)</label>
+            <input type="text" id="modalStats" class="form-control" readonly>
+        </div>
+        
+        <div id="qgiMessage" class="alert-box"></div>
+
+        <div class="checklist-section">
+            <div class="checklist-box">
+                <h4>📌 สาเหตุที่เป็นไปได้ (Potential Causes)</h4>
+                <div id="causeChecklist"></div>
+            </div>
+            <div class="checklist-box">
+                <h4>🛠️ แนวทางแก้ไข (Corrective Actions)</h4>
+                <div id="actionChecklist"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const urls = {
+    tea: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=1789978367&single=true&output=csv",
+    bias: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=446342745&single=true&output=csv",
+    cv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=870055578&single=true&output=csv"
+};
+
+const TELEGRAM_TOKEN = "8682711290:AAFlmIBAZLcGwIUzhzfAVtHmp5F7fcJajMQ";
+const TELEGRAM_CHAT_ID = "-1003979978338";
+
+let masterData = { tea: [], bias: [], cv: [] };
+let maxTrial = 0;
+
+async function fetchData() {
+    const fetchCSV = (url) => new Promise(res => Papa.parse(url, { download: true, header: true, dynamicTyping: true, complete: (result) => res(result.data) }));
+    try {
+        const [teaData, biasData, cvData] = await Promise.all([
+            fetchCSV(urls.tea),
+            fetchCSV(urls.bias),
+            fetchCSV(urls.cv)
+        ]);
+        masterData.tea = teaData;
+        masterData.bias = biasData;
+        masterData.cv = cvData;
+        initControls();
+        updateDashboard();
+    } catch (error) {
+        console.error("Error fetching data:", error);
+    }
+}
+
+function isValidValue(val) {
+    return val !== null && val !== undefined && val !== "" && !isNaN(val);
+}
+
+function initControls() {
+    const trials = [...new Set(masterData.tea.map(item => item.Trial))].filter(t => {
+        if (!t) return false;
+        const bRow = masterData.bias.find(r => r.Trial == t);
+        const cRow = masterData.cv.find(r => r.Trial == t);
+        return bRow && cRow;
+    }).map(Number);
+
+    if (trials.length > 0) {
+        maxTrial = Math.max(...trials);
+    }
+
+    trials.sort((a, b) => b - a);
+
+    const trialSelect = document.getElementById('trialSelect');
+    trialSelect.innerHTML = "";
+    trials.forEach(t => {
+        let opt = document.createElement('option');
+        opt.value = t; 
+        opt.innerText = "Trial " + t + (t === maxTrial ? " (ล่าสุด)" : "");
+        trialSelect.appendChild(opt);
+    });
+}
+
+// 🌟 ฟังก์ชัน Manual แจ้งเตือนผ่าน Telegram เมื่อมีการกดปุ่มเท่านั้น (ส่งผลตาม Trial ที่เลือกอยู่บนหน้าเว็บปัจจุบัน)
+async function clickToSendTelegram() {
+    const selectedTrial = document.getElementById('trialSelect').value;
+    if(!selectedTrial) return alert("กรุณาเลือก Trial ก่อนกดส่งผล");
+
+    const teaRow = masterData.tea.find(r => r.Trial == selectedTrial);
+    const biasRow = masterData.bias.find(r => r.Trial == selectedTrial);
+    const cvRow = masterData.cv.find(r => r.Trial == selectedTrial);
+
+    if(!teaRow || !biasRow || !cvRow) return alert("ข้อมูลไม่ครบถ้วน ไม่สามารถส่งได้");
+
+    const monthYear = teaRow['Month - Year'] || teaRow['month-year'] || "ไม่ระบุเดือน";
+    let failedItemsDetails = ""; 
+    let hasFailed = false;
+
+    const excludeKeys = ['Trial', 'Month - Year', 'month-year'];
+    const testKeys = Object.keys(teaRow).filter(k => !excludeKeys.includes(k));
+
+    testKeys.forEach(test => {
+        const tea = teaRow[test];
+        const bias = biasRow[test];
+        const cv = cvRow[test];
+
+        if (isValidValue(tea) && isValidValue(bias) && isValidValue(cv)) {
+            const sigma = (tea - Math.abs(bias)) / cv;
+            const qgi = Math.abs(bias) / (1.5 * cv);
+            if (sigma < 4.0) {
+                hasFailed = true;
+                failedItemsDetails += `• *${test}*\n  (TEa:${tea.toFixed(2)}%, Bias:${bias.toFixed(2)}%, CV:${cv.toFixed(2)}%) ➔ *Sigma:${sigma.toFixed(2)}* [QGI:${qgi.toFixed(2)}]\n`;
+            }
+        }
+    });
+
+    let message = `📊 *รายงานสรุปผลวิเคราะห์แล็บประสิทธิภาพคุณภาพ*\n--------------------------\n📌 *Trial:* ${selectedTrial}\n📅 *รอบเดือน:* ${monthYear}\n📈 *% Pass Rate:* ${document.getElementById('valPassRate').innerText}\n\n`;
+    if (hasFailed) { 
+        message += `❌ *รายการที่ตกเกณฑ์ (Sigma < 4.0):*\n` + failedItemsDetails; 
+    } else { 
+        message += `✅ *รายการทดสอบทั้งหมด ผ่านเกณฑ์มาตรฐานดีเยี่ยม!*`; 
+    }
+    message += `\n--------------------------`;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' })
+        });
+        if(response.ok) { 
+            alert(`🎉 ส่งรายงานผล Trial ${selectedTrial} เข้ากลุ่ม Telegram สำเร็จแล้ว!`); 
+        } else { 
+            alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับ API Telegram"); 
+        }
+    } catch (e) { 
+        alert("ไม่สามารถส่งข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต"); 
+    }
+}
+
+function updateDashboard() {
+    const selectedTrial = document.getElementById('trialSelect').value;
+    if (!selectedTrial) return;
+
+    const teaRow = masterData.tea.find(r => r.Trial == selectedTrial);
+    const biasRow = masterData.bias.find(r => r.Trial == selectedTrial);
+    const cvRow = masterData.cv.find(r => r.Trial == selectedTrial);
+
+    const monthYear = teaRow['Month - Year'] || teaRow['month-year'] || "ไม่ระบุเดือน";
+    
+    document.getElementById('displayMonth').innerText = `Data for: ${monthYear}`;
+    document.getElementById('valMonth').innerText = monthYear;
+
+    let plotData = [];
+    let tableHTML = "";
+    let failedTests = [];
+    let failedBadgesHTML = ""; 
+    let totalTests = 0;
+    let passedTests = 0;
+
+    const excludeKeys = ['Trial', 'Month - Year', 'month-year'];
+    const testKeys = Object.keys(teaRow).filter(k => !excludeKeys.includes(k));
+
+    testKeys.forEach(test => {
+        const tea = teaRow[test];
+        const bias = biasRow ? biasRow[test] : null;
+        const cv = cvRow ? cvRow[test] : null;
+
+        if (isValidValue(tea) && isValidValue(bias) && isValidValue(cv)) {
+            totalTests++;
+            const sigma = (tea - Math.abs(bias)) / cv;
+            const qgi = Math.abs(bias) / (1.5 * cv);
+            const isPass = sigma >= 4;
+
+            if(isPass) {
+                passedTests++;
+            } else {
+                failedTests.push(test);
+                failedBadgesHTML += `<span class="failed-click-badge" onclick="openModal('${test}', '${selectedTrial}', ${sigma.toFixed(2)}, ${qgi.toFixed(2)}, ${tea.toFixed(2)}, ${bias.toFixed(2)}, ${cv.toFixed(2)})">⚠️ ${test}</span>`;
+            }
+
+            plotData.push({
+                x: [(cv / tea) * 100],
+                y: [(Math.abs(bias) / tea) * 100],
+                mode: 'markers+text',
+                type: 'scatter',
+                name: test,
+                text: [test],
+                textposition: 'top center',
+                marker: { size: 14, line: {color: '#fff', width: 2}, color: isPass ? '#28a745' : '#dc3545' },
+                hovertemplate: `<b>${test}</b><br>Sigma: ${sigma.toFixed(2)}<extra></extra>`
+            });
+
+            tableHTML += `
+                <tr class="${!isPass ? 'clickable-row' : ''}" onclick="${!isPass ? `openModal('${test}', '${selectedTrial}', ${sigma.toFixed(2)}, ${qgi.toFixed(2)}, ${tea.toFixed(2)}, ${bias.toFixed(2)}, ${cv.toFixed(2)})` : ''}">
+                    <td><strong>${test}</strong></td>
+                    <td style="font-weight:bold; color:${isPass ? '#2e7d32' : '#c62828'}">${sigma.toFixed(2)}</td>
+                    <td>${qgi.toFixed(2)}</td>
+                    <td><span class="badge ${isPass ? 'bg-success' : 'bg-danger'}">${isPass ? 'PASS' : 'FAIL'}</span></td>
+                </tr>`;
+        }
+    });
+
+    const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
+    document.getElementById('valPassRate').innerText = passRate + "%";
+    document.getElementById('valFailedCount').innerText = failedTests.length;
+    
+    document.getElementById('valFailedList').innerHTML = failedTests.length > 0 ? failedBadgesHTML : "ไม่มีรายการที่ตกเกณฑ์";
+    
+    document.getElementById('cardPassRate').className = `kpi-card ${passRate >= 80 ? 'pass' : 'fail'}`;
+    document.getElementById('cardFailedCount').className = `kpi-card ${failedTests.length === 0 ? 'pass' : 'fail'}`;
+
+    // 🌟 นำฟังก์ชันส่งแจ้งเตือนอัตโนมัติ (sendTelegramAlert) ออกไปเรียบร้อยแล้ว เพื่อให้ส่งเฉพาะตอนกดปุ่มเท่านั้น
+
+    Plotly.newPlot('opspecChart', plotData, {
+        title: { text: `Normalized Opspec Chart: Trial ${selectedTrial} (${monthYear})`, font: {size: 18} },
+        xaxis: { title: '%CV / TEa', range: [0, 40] },
+        yaxis: { title: '%Bias / TEa', range: [0, 100] },
+        shapes: [
+            { type: 'path', path: 'M 0,0 L 0,100 L 16.6,0 Z', fillcolor: 'rgba(40, 167, 69, 0.15)', line: {width: 0}, layer: 'below' },
+            { type: 'path', path: 'M 16.6,0 L 25,0 L 0,100 Z', fillcolor: 'rgba(255, 235, 59, 0.15)', line: {width: 0}, layer: 'below' }
+        ],
+        showlegend: false,
+        margin: { t: 60, l: 50, r: 30, b: 50 }
+    });
+
+    document.getElementById('tableBody').innerHTML = tableHTML;
+    updateTrendChart(testKeys);
+}
+
+function updateTrendChart(testKeys) {
+    let trials = [];
+    let avgSigma = [];
+    masterData.tea.forEach((row) => {
+        const t = row.Trial;
+        if (!t) return;
+        const bRow = masterData.bias.find(r => r.Trial == t);
+        const cRow = masterData.cv.find(r => r.Trial == t);
+        if (!bRow || !cRow) return;
+
+        let sigmaSum = 0, count = 0;
+        testKeys.forEach(test => {
+            const tea = row[test], bias = bRow[test], cv = cRow[test];
+            if (isValidValue(tea) && isValidValue(bias) && isValidValue(cv)) {
+                sigmaSum += (tea - Math.abs(bias)) / cv;
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            const m = row['Month - Year'] || row['month-year'] || t;
+            trials.push(m);
+            avgSigma.push(sigmaSum / count);
+        }
+    });
+
+    Plotly.newPlot('trendChart', [{
+        x: trials, y: avgSigma,
+        type: 'scatter', mode: 'lines+markers',
+        line: {color: '#1a237e', width: 3, shape: 'spline'},
+        marker: {size: 8}
+    }], {
+        title: 'แนวโน้มค่าเฉลี่ย Sigma รายเดือน',
+        yaxis: { title: 'Average Sigma Metric' },
+        margin: { t: 40, b: 80 }
+    });
+}
+
+function openModal(test, trial, sigma, qgi, tea, bias, cv) {
+    document.getElementById('modalInfo').value = test + " | Trial: " + trial;
+    document.getElementById('modalStats').value = `QGI Score = ${qgi} (เกณฑ์การวิเคราะห์หาสาเหตุหลักจากข้อผิดพลาด)`;
+    
+    document.getElementById('mTEa').innerText = tea + " %";
+    document.getElementById('mBias').innerText = bias + " %";
+    document.getElementById('mCV').innerText = cv + " %";
+    document.getElementById('mSigma').innerText = sigma;
+
+    const msg = document.getElementById('qgiMessage');
+    let causes = [], actions = [];
+    
+    if (qgi > 1.2) {
+        msg.innerHTML = "⚠️ ปัญหาหลักจากโหมด: Inaccuracy (Systematic Error / ค่า Bias สูงเกินเกณฑ์)<br>💡 คำแนะนำ: มุ่งเน้นตรวจสอบระบบกลุ่มงานตรวจสอบสอบเทียบ (Calibration Checking)";
+        msg.style.background = "#fff7ed"; msg.style.color = "#c2410c";
+        causes = [
+            "Calibrator เสื่อมสภาพ หรือละลายตั้งทิ้งไว้นานเกินกำหนด", 
+            "Calibration Curve หมดอายุหรือเกิดความเสื่อมสภาพจากการใช้งาน", 
+            "พิมพ์คีย์ป้อนค่า Assigned value ผิดพลาด หรือสลับ Lot สติกเกอร์",
+            "เปลี่ยนชุด Lot น้ำยาใหม่โดยไม่ได้ดำเนินการ Re-calibrate",
+            "หลอดไฟวัดแสงประมวลผล (Lamp photometer) เริ่มเสื่อมสภาพ"
+        ];
+        actions = [
+            "ดำเนินการทำ Re-Calibration ใหม่อีกครั้งอย่างเร่งด่วน", 
+            "เปิดใช้งานชุดควบคุม Calibrator ขวดใหม่ทดแทนขวดเดิม",
+            "ตรวจสอบความถูกต้องของค่าความเข้มข้นในใบแจ้ง Lot Specification",
+            "ทำความสะอาดระบบออปติกส์ และเช็คค่าพลังงานส่องสว่างของหลอดไฟเครื่อง"
+        ];
+    } else if (qgi < 0.8) {
+        msg.innerHTML = "⚠️ ปัญหาหลักจากโหมด: Imprecision (Random Error / ค่าเปอร์เซ็นต์ %CV สูงหลุดเกณฑ์)<br>💡 คำแนะนำ: ตรวจสอบความนิ่งคงที่และระบบดูดจ่ายสารของเครื่องวิเคราะห์อัตโนมัติ";
+        msg.style.background = "#eff6ff"; msg.style.color = "#1d4ed8";
+        causes = [
+            "เกิดฟองอากาศซ่อนตกค้าง (Air Bubbles) ภายในท่อส่งระบบหรือตัวเข็ม Probe", 
+            "ชุดก้านเข็ม Sample/Reagent Probe สกปรก มีคราบไขมัน คราบโปรตีนสะสมเกาะติด", 
+            "สารควบคุมคุณภาพ (QC) เสื่อมสภาพ หรือพนักงานละลายผสมสารไม่เป็นเนื้อเดียวกัน",
+            "ระบบควบคุมอุณหภูมิห้องอ่างปฏิกิริยา (Incubation Bath) มีสภาวะแกว่งตัวไม่นิ่ง",
+            "หลอดไฟวัดปฏิกิริยา (Reaction lamp) มีคราบสกปรกหรือรอยขีดข่วนสะสม"
+        ];
+        actions = [
+            "สั่งคำสั่งรัน Air Purge / Prime System เพื่อไล่ฟองอากาศตกค้างออกจากระบบ", 
+            "ทำความสะอาดบำรุงรักษาขั้นลึก ล้างคราบฝังแน่นเข็มจ่ายน้ำยา (Probe Wash / Cleaning)",
+            "จัดแจงแบ่งใช้ชุด QC แช่แข็งขวดใหม่ (Fresh Aliquot) หลีกเลี่ยงขวดเดิมที่แกว่ง",
+            "ตรวจเช็คการทำงานของอ่างควบคุมอุณหภูมิ และเปลี่ยนหลอดคิวเวทกลุ่มทดสอบ"
+        ];
+    } else {
+        msg.innerHTML = "⚠️ ปัญหาหลักจากโหมด: Mixed Error (เกิดปัญหาผสมร่วมกันทั้งฝั่ง Systematic และ Random)<br>💡 คำแนะนำ: จำเป็นต้องได้รับการประเมินทั้งกระบวนการดูแลรักษาน้ำยาและระบบจ่ายจ่ายควบคู่";
+        msg.style.background = "#fef2f2"; msg.style.color = "#b91c1c";
+        causes = [
+            "น้ำยาเคมี (Reagent) ใกล้จะหมดอายุ หรือเปิดทิ้งไว้บนเครื่องนานเกินค่า On-board stability", 
+            "สารมาตรฐานและน้ำยาควบคุมเสื่อมสภาพจากการเปิดปิดตู้เย็นบ่อยทำให้ความเย็นสะสมไม่คงที่",
+            "ความคลาดเคลื่อนสะสมร่วมที่เกิดขึ้นจากทักษะส่วนบุคคลสลับกับการทำงานของเครื่องจักร"
+        ];
+        actions = [
+            "ตรวจสอบปริมาณสารตกค้างก้นขวดและเช็ควันหมดอายุตัวน้ำยาบนเครื่อง", 
+            "ทำการตรวจสอบบันทึก Log อุณหภูมิการทำงานของตู้เย็นที่จัดเก็บสารเคมีหลัก",
+            "ดำเนินการ Re-calibrate ควบคู่กับทำความสะอาดล้างระบบท่อและเข็มดูดสารร่วมกัน"
+        ];
+    }
+    
+    document.getElementById('causeChecklist').innerHTML = causes.map(c => `<label class="check-item"><input type="checkbox" name="c" value="${c}"> ${c}</label>`).join('');
+    document.getElementById('actionChecklist').innerHTML = actions.map(a => `<label class="check-item"><input type="checkbox" name="a" value="${a}"> ${a}</label>`).join('');
+    document.getElementById('correctionModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('correctionModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('correctionModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+
+fetchData();
+</script>
+
+</body>
+</html>

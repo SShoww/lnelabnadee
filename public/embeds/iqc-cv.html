@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQAC CCV Monitor - Multi-Machine Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 20px; background-color: #f4f7f6; }
+        .container { max-width: 1300px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; }
+        
+        /* Summary Cards Style */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { padding: 15px; border-radius: 12px; text-align: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s; }
+        .card h4 { margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; }
+        .card p { margin: 0; font-size: 1.8em; font-weight: bold; }
+        .bg-blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .bg-orange { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .bg-red { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        /* Controls Style */
+        .controls-wrapper { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 10px; margin-bottom: 25px; }
+        .controls-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 20px; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-weight: bold; color: #34495e; font-size: 0.9em; }
+        select { padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd; font-size: 15px; font-family: 'Sarabun'; cursor: pointer; min-width: 180px; background-color: #fafafa; }
+        select:focus { border-color: #3498db; outline: none; }
+        
+        .chart-container { position: relative; height: 60vh; width: 100%; margin-top: 15px; }
+        .loading { text-align: center; color: #3498db; padding: 100px; font-weight: bold; font-size: 1.2em; }
+        .legend-info { display: flex; justify-content: center; gap: 20px; font-size: 0.85em; margin-top: 15px; flex-wrap: wrap; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>แดชบอร์ดติดตามคุณภาพ %CV แยกตามเครื่องมือ</h2>
+    <p class="subtitle">ระบบวิเคราะห์ข้อมูล Cumulative %CV (%CCV) และกรองเลือกช่วงเดือนได้</p>
+
+    <div class="controls-wrapper">
+        <div class="controls-row">
+            <div class="control-group">
+                <label for="machineSelector">1. เลือกเครื่องมือวัด:</label>
+                <select id="machineSelector">
+                    <option value="vitross">Vitross 4600</option>
+                    <option value="bc6200">BC 6200</option>
+                    <option value="autolumo">Autolumo</option>
+                    <option value="ca620">Ca620</option>
+                    <option value="dtx">DTX</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="testSelector">2. เลือกรายการทดสอบ:</label>
+                <select id="testSelector">
+                    <option value="all">แสดงทั้งหมด (Summary View)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="startMonth">3. ตั้งแต่เดือน:</label>
+                <select id="startMonth"></select>
+            </div>
+
+            <div class="control-group">
+                <label for="endMonth">4. ถึงเดือน:</label>
+                <select id="endMonth"></select>
+            </div>
+        </div>
+    </div>
+
+    <div id="summarySection" class="summary-grid" style="display:none;">
+        <div class="card bg-blue">
+            <h4>%CV เฉลี่ยสะสมสะท้อนช่วงที่เลือก</h4>
+            <p id="stat-cum">-</p>
+        </div>
+        <div class="card bg-orange">
+            <h4>เดือนที่สูงกว่าค่าเฉลี่ยสะสม</h4>
+            <p id="stat-above-avg">-</p>
+        </div>
+        <div class="card bg-red">
+            <h4>เดือนที่เกินเกณฑ์ 0.33×TEa</h4>
+            <p id="stat-out-limit">-</p>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">กำลังดาวน์โหลดและประมวลผลข้อมูล...</div>
+    <div class="chart-container">
+        <canvas id="cvChart"></canvas>
+    </div>
+
+    <div class="legend-info" id="legendExtra" style="display:none;">
+        <span><span class="dot" style="background-color: rgba(231, 76, 60, 0.9);"></span> วิกฤต (เกินเกณฑ์ 0.33×TEa)</span>
+        <span><span class="dot" style="background-color: rgba(243, 156, 18, 0.7);"></span> เฝ้าระวัง (สูงกว่าค่าเฉลี่ยสะสมในเดือนนั้น)</span>
+        <span><span class="dot" style="background-color: rgba(52, 152, 219, 0.3);"></span> ปกติ (ต่ำกว่าค่าเฉลี่ย)</span>
+    </div>
+</div>
+
+<script>
+    // 1. กำหนด URLs ของ Google Sheets CSV ข้อมูลจริง
+    const teaUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=611159041&single=true&output=csv';
+    
+    const machineUrls = {
+        vitross: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=0&single=true&output=csv',
+        bc6200: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=280275972&single=true&output=csv',
+        autolumo: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=192008755&single=true&output=csv',
+        ca620: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=280596512&single=true&output=csv',
+        dtx: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBswlqrFzfYIewdwjORV6-FN0uombLD2X2S6g9D3qi481uoEKqWrJoWigCviGMKBpygU53n6BYMya4/pub?gid=1062439565&single=true&output=csv'
+    };
+
+    // Global variables สำหรับเก็บข้อมูลสถานะปัจจุบัน
+    let chart;
+    let targetTEa = {};      // เก็บค่าเกณฑ์ TEa ของแต่ละ Test
+    let allMonths = [];      // รายชื่อเดือนทั้งหมดของเครื่องปัจจุบัน
+    let currentDataRows = [];// ข้อมูลดิบของเครื่องปัจจุบันที่โหลดมา
+    let testsAvailable = []; // รายการทดสอบที่มีในเครื่องปัจจุบัน
+
+    // ฟังก์ชันช่วยดึงและแปลง CSV
+    const fetchCSV = (url) => new Promise((resolve, reject) => {
+        Papa.parse(url, {
+            download: true,
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: res => resolve(res.data),
+            error: err => reject(err)
+        });
+    });
+
+    // จุดเริ่มต้นโหลดข้อมูล
+    async function init() {
+        try {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = "กำลังดาวน์โหลดเกณฑ์ TEa...";
+            
+            // 1. โดนโหลดข้อมูลเกณฑ์ TEa มาไว้ในตัวแปรก่อนครั้งเดียว
+            const teaRows = await fetchCSV(teaUrl);
+            if (teaRows && teaRows.length > 0) {
+                const firstRow = teaRows[0];
+                Object.keys(firstRow).forEach(key => {
+                    if (key !== 'Test' && key !== 'TEa') {
+                        let baseTEa = parseFloat(firstRow[key]);
+                        targetTEa[key] = isNaN(baseTEa) ? 0 : parseFloat((baseTEa * 0.33).toFixed(2));
+                    }
+                });
+            }
+
+            // 2. ผูก Event Listener เมื่อเปลี่ยนค่าตัวกรองต่างๆ
+            document.getElementById('machineSelector').addEventListener('change', loadMachineData);
+            document.getElementById('testSelector').addEventListener('change', renderDashboard);
+            document.getElementById('startMonth').addEventListener('change', renderDashboard);
+            document.getElementById('endMonth').addEventListener('change', renderDashboard);
+
+            // 3. โหลดข้อมูลเครื่องแรกเริ่มต้น (Vitross)
+            await loadMachineData();
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูลเริ่มต้น: " + error.message;
+        }
+    }
+
+    // โหลดข้อมูลรายเครื่องเมื่อมีการสลับเครื่องมือ
+    async function loadMachineData() {
+        const machine = document.getElementById('machineSelector').value;
+        const url = machineUrls[machine];
+        
+        try {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = "กำลังดาวน์โหลดข้อมูลของเครื่องวัด...";
+            
+            const rows = await fetchCSV(url);
+            if (!rows || rows.length === 0) throw new Error("ไม่พบข้อมูลในชีตเครื่องมือนี้");
+
+            currentDataRows = rows;
+
+            // ตรวจสอบคอลัมน์เวลา (Month - Year หรือ Trial)
+            allMonths = rows.map(r => r['Month - Year'] || r['Month-Year'] || r['Trial'] || 'N/A');
+            
+            // หาคอลัมน์ของรายการ Test ทั้งหมดที่มีในเครื่องนี้
+            testsAvailable = Object.keys(rows[0]).filter(k => 
+                k !== 'Month - Year' && k !== 'Month-Year' && k !== 'Trial' && k !== 'Trial '
+            );
+
+            // อัปเดต Dropdown รายการทดสอบ (Test Selector)
+            const testSel = document.getElementById('testSelector');
+            testSel.innerHTML = '<option value="all">แสดงทั้งหมด (Summary View)</option>';
+            testsAvailable.forEach(t => testSel.add(new Option(t, t)));
+
+            // อัปเดต Dropdown ช่วงเวลา ตั้งแต่เดือน - ถึงเดือน
+            const startSel = document.getElementById('startMonth');
+            const endSel = document.getElementById('endMonth');
+            
+            startSel.innerHTML = '';
+            endSel.innerHTML = '';
+            
+            allMonths.forEach((m, idx) => {
+                startSel.add(new Option(m, idx));
+                endSel.add(new Option(m, idx));
+            });
+
+            // ตั้งค่าเริ่มต้น กรองจากเดือนแรกสุด ถึง เดือนล่าสุด
+            startSel.value = 0;
+            endSel.value = allMonths.length - 1;
+
+            document.getElementById('loading').style.display = 'none';
+            
+            // วาดแดชบอร์ดหลังจากสลับข้อมูลเครื่องเสร็จ
+            renderDashboard();
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการโหลดเครื่องมือ: " + error.message;
+        }
+    }
+
+    // คำนวณ กรองข้อมูล และสร้าง Chart
+    function renderDashboard() {
+        const testSelected = document.getElementById('testSelector').value;
+        const startIdx = parseInt(document.getElementById('startMonth').value);
+        const endIdx = parseInt(document.getElementById('endMonth').value);
+
+        // ดักกรณีผู้ใช้เลือกเดือนย้อนกลับ (เช่น ตั้งแต่เดือน มี.ค. ถึง ม.ค.)
+        let realStart = Math.min(startIdx, endIdx);
+        let realEnd = Math.max(startIdx, endIdx);
+
+        // กรองข้อมูลเฉพาะช่วงเดือนที่เลือก
+        const filteredRows = currentDataRows.slice(realStart, realEnd + 1);
+        const filteredLabels = allMonths.slice(realStart, realEnd + 1);
+
+        const summarySection = document.getElementById('summarySection');
+        const legendExtra = document.getElementById('legendExtra');
+        let datasets = [];
+
+        if (testSelected === 'all') {
+            // โหมด: แสดงข้อมูลเฉลี่ยสะสมรวมของทุกเทสต์พร้อมกัน (Summary View Line Chart)
+            summarySection.style.display = 'none';
+            legendExtra.style.display = 'none';
+
+            testsAvailable.forEach((test) => {
+                // คำนวณ Cumulative Mean จากข้อมูลที่กรอง
+                let sum = 0;
+                let cumData = filteredRows.map((r, i) => {
+                    let val = parseFloat(r[test]);
+                    sum += isNaN(val) ? 0 : val;
+                    return parseFloat((sum / (i + 1)).toFixed(2));
+                });
+
+                datasets.push({
+                    label: test,
+                    data: cumData,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    fill: false,
+                    tension: 0.2
+                });
+            });
+
+        } else {
+            // โหมด: เจาะลึกดูราย Test (จะแสดงเป็น Bar Chart %CV และ Line Chart %CCV)
+            summarySection.style.display = 'grid';
+            legendExtra.style.display = 'flex';
+
+            const threshold = targetTEa[testSelected] || 0;
+
+            // ดึงค่า %CV รายเดือน
+            let rawValues = filteredRows.map(r => {
+                let val = parseFloat(r[testSelected]);
+                return isNaN(val) ? 0 : val;
+            });
+
+            // คำนวณ %CV เฉลี่ยสะสม (%CCV) ในช่วงเวลานั้นๆ
+            let sum = 0;
+            let cumValues = rawValues.map((v, i) => {
+                sum += v;
+                return parseFloat((sum / (i + 1)).toFixed(2));
+            });
+
+            // คำนวณการแจ้งเตือนและการนับสถิติบนการ์ดด้านบน
+            let countAboveAvg = 0;
+            let countOutLimit = 0;
+            rawValues.forEach((val, i) => {
+                if (threshold > 0 && val > threshold) countOutLimit++;
+                if (val > cumValues[i]) countAboveAvg++;
+            });
+
+            // อัปเดตข้อมูลบนตัวเลข Summary Cards
+            document.getElementById('stat-cum').innerText = cumValues.length > 0 ? cumValues[cumValues.length - 1] + '%' : '-';
+            document.getElementById('stat-above-avg').innerText = countAboveAvg + ' เดือน';
+            document.getElementById('stat-out-limit').innerText = countOutLimit + ' เดือน';
+
+            // ระบุสีแท่งของกราฟแยกตามเงื่อนไขรายเดือน
+            const barColors = rawValues.map((val, i) => {
+                if (threshold > 0 && val > threshold) return 'rgba(231, 76, 60, 0.9)'; // แดง เกินเกณฑ์
+                if (val > cumValues[i]) return 'rgba(243, 156, 18, 0.7)'; // ส้ม เกินค่าเฉลี่ยสะสม
+                return 'rgba(52, 152, 219, 0.3)'; // ฟ้า ปลอดภัยปกติ
+            });
+
+            // เพิ่ม Dataset 1: แท่ง %CV รายเดือน
+            datasets.push({
+                label: `%CV รายเดือน`,
+                data: rawValues,
+                backgroundColor: barColors,
+                borderColor: barColors.map(c => c.replace('0.3', '0.8').replace('0.7', '1').replace('0.9', '1')),
+                borderWidth: 1,
+                type: 'bar',
+                order: 2
+            });
+
+            // เพิ่ม Dataset 2: เส้น %CV เฉลี่ยสะสม (%CCV)
+            datasets.push({
+                label: `%CV เฉลี่ยสะสม (CCV)`,
+                data: cumValues,
+                borderColor: '#2ecc71',
+                borderWidth: 3,
+                pointBackgroundColor: '#2ecc71',
+                pointRadius: 4,
+                fill: false,
+                tension: 0.3,
+                type: 'line',
+                order: 1
+            });
+
+            // เพิ่ม Dataset 3: เส้นประ เกณฑ์วิกฤต (0.33 × TEa)
+            if (threshold > 0) {
+                datasets.push({
+                    label: `เกณฑ์ควบคุม 0.33 × TEa (${threshold}%)`,
+                    data: Array(filteredRows.length).fill(threshold),
+                    borderColor: '#e74c3c',
+                    borderWidth: 2,
+                    borderDash: [10, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 3
+                });
+            }
+        }
+
+        // วาดรูปกราฟลงใน Canvas แทนนรูปเก่า
+        const ctx = document.getElementById('cvChart').getContext('2d');
+        if (chart) chart.destroy(); // เคลียร์กราฟเดิมก่อนหน้าออก
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: filteredLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                let val = context.parsed.y;
+                                label += ': ' + val + '%';
+                                
+                                if (context.dataset.type === 'bar' && testSelected !== 'all') {
+                                    let threshold = targetTEa[testSelected] || 0;
+                                    if (threshold > 0 && val > threshold) label += ' ❌ เกินเกณฑ์ควบคุม!';
+                                    else if (val > chart.data.datasets[1].data[context.dataIndex]) label += ' ⚠️ สูงกว่าค่าเฉลี่ยสะสม';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        title: { display: true, text: 'Percentage ค่าเบี่ยงเบน (%CV)', font: { weight: 'bold', family: 'Sarabun' } } 
+                    },
+                    x: {
+                        ticks: { maxRotation: 45, minRotation: 45 }
+                    }
+                }
+            }
+        });
+    }
+
+    // สั่งให้ระบบทำงานเมื่อโหลดหน้าเว็บสมบูรณ์
+    window.onload = init;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Satisfaction Feedback Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Sarabun', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .header-section { background: linear-gradient(135deg, #00b09b, #96c93d); color: white; padding: 30px; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
+        .filter-box { background: white; padding: 20px; border-radius: 15px; margin-top: -50px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .feedback-list { max-height: 400px; overflow-y: auto; }
+        .badge-count { font-size: 0.9em; background-color: #e9ecef; color: #495057; }
+        .table-custom { font-size: 0.9rem; }
+        .table-custom thead { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="header-section text-center">
+    <h1>สรุปข้อเสนอแนะความพึงพอใจ (แพทย์)</h1>
+    <p>หน่วยงานเทคนิคการแพทย์ โรงพยาบาลนาดี</p>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-4 filter-box">
+            <label for="yearFilter" class="form-label fw-bold">เลือกปีงบประมาณ / ปีที่สำรวจ</label>
+            <select id="yearFilter" class="form-select">
+                <option value="all">ดูข้อมูลทั้งหมด (ทุกปี)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">รายการทดสอบที่อยากให้เปิดเพิ่ม</div>
+                <div class="card-body feedback-list" id="requestList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">สิ่งที่ท่านประทับใจ</div>
+                <div class="card-body feedback-list" id="impressionList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">สิ่งที่ควรปรับปรุง</div>
+                <div class="card-body feedback-list" id="improvementList">
+                    <div class="text-center text-muted">กำลังโหลดข้อมูล...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcXb1J9iDNPpNk0C1Nhzo3Po7FGC-yC1r8oVFX7KM0gLAdq97IIKPHG3yI0lF7XwluPoy6jXcZlpL5/pub?output=csv';
+    let allData = [];
+
+    async function fetchData() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                // กรองแถวที่เป็นค่าว่าง (มักเกิดจากหัวตารางซ้อนใน Google Sheet)
+                allData = results.data.filter(row => row['ประทับเวลา']);
+                populateYearFilter(allData);
+                updateDashboard('all');
+            }
+        });
+    }
+
+    function populateYearFilter(data) {
+        const select = document.getElementById('yearFilter');
+        const years = new Set();
+        
+        data.forEach(row => {
+            const dateStr = row['ประทับเวลา'];
+            if(dateStr) {
+                const year = dateStr.split('/')[2]?.split(',')[0].trim();
+                if(year) years.add(year);
+            }
+        });
+
+        const sortedYears = Array.from(years).sort((a, b) => b - a);
+        sortedYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = `ปี ${parseInt(year) + 543} (ค.ศ. ${year})`;
+            select.appendChild(option);
+        });
+    }
+
+    function updateDashboard(selectedYear) {
+        const requestContainer = document.getElementById('requestList');
+        const impressionContainer = document.getElementById('impressionList');
+        const improvementContainer = document.getElementById('improvementList');
+
+        // Clear current content
+        requestContainer.innerHTML = '';
+        impressionContainer.innerHTML = '';
+        improvementContainer.innerHTML = '';
+
+        const filteredData = selectedYear === 'all' 
+            ? allData 
+            : allData.filter(row => row['ประทับเวลา'].includes(selectedYear));
+
+        const categories = [
+            { id: 'รายการทดสอบที่อยากให้เปิดเพิ่มขึ้น เพื่อประสิทธิภาพในการดูแลผู้ป่วย', container: requestContainer },
+            { id: 'สิ่งที่ท่านประทับใจ ที่ท่านได้รับการบริการ คือ', container: impressionContainer },
+            { id: 'สิ่งที่ท่านคิดว่า ควรมีการปรับปรุง ที่เกี่ยวกับการบริการ คือ', container: improvementContainer }
+        ];
+
+        categories.forEach(cat => {
+            const contents = filteredData
+                .map(row => row[cat.id])
+                .filter(text => text && text.trim() !== "" && text !== "-");
+
+            if (contents.length === 0) {
+                cat.container.innerHTML = '<div class="text-center text-muted">ไม่พบข้อมูล</div>';
+            } else {
+                const listGroup = document.createElement('ul');
+                listGroup.className = 'list-group list-group-flush';
+                contents.forEach(text => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item py-3';
+                    li.innerHTML = `• ${text}`;
+                    listGroup.appendChild(li);
+                });
+                cat.container.appendChild(listGroup);
+            }
+        });
+    }
+
+    document.getElementById('yearFilter').addEventListener('change', (e) => {
+        updateDashboard(e.target.value);
+    });
+
+    fetchData();
+</script>
+
+</body>
+</html>

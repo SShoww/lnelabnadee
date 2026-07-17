@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard สรุปข้อเสนอแนะ รพ.สต.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        .card-feedback { transition: transform 0.2s; }
+        .card-feedback:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">📊 สรุปความประทับใจและข้อเสนอแนะ</h1>
+                <p class="text-gray-500 text-sm">ข้อมูลจากระบบสำรวจความพึงพอใจ (รพ.สต.)</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <label for="yearFilter" class="font-medium text-gray-700">เลือกปี พ.ศ.:</label>
+                <select id="yearFilter" onchange="renderDashboard()" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="all">ดูทั้งหมด</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-xl font-semibold text-emerald-700 mb-4 flex items-center gap-2">
+                    ✨ สิ่งที่น่าประทับใจ
+                </h2>
+                <div id="impressionList" class="space-y-4">
+                    </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold text-amber-700 mb-4 flex items-center gap-2">
+                    🛠 สิ่งที่ควรปรับปรุง / ข้อเสนอแนะ
+                </h2>
+                <div id="suggestionList" class="space-y-4">
+                    </div>
+            </div>
+        </div>
+        
+        <div id="loader" class="text-center py-20 text-gray-400">
+            กำลังโหลดข้อมูลจาก Google Sheets...
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQBIPss2pDpGQf0fkvGsDQC9i9KsbFDvLbgk5wZHUhvZf8jsCxRMFZHif_YxFIrtf2wrJbAkyHja4BI/pub?output=csv';
+        let rawData = [];
+
+        async function fetchData() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    rawData = results.data.filter(row => row['ประทับเวลา']); // กรองแถวว่าง
+                    setupYearFilter();
+                    renderDashboard();
+                    document.getElementById('loader').classList.add('hidden');
+                },
+                error: function(err) {
+                    console.error("Error fetching data:", err);
+                    document.getElementById('loader').innerText = "ไม่สามารถโหลดข้อมูลได้ โปรดตรวจสอบการเผยแพร่ไฟล์ CSV";
+                }
+            });
+        }
+
+        function setupYearFilter() {
+            const years = new Set();
+            rawData.forEach(row => {
+                const year = getThaiYear(row['ประทับเวลา']);
+                if (year) years.add(year);
+            });
+
+            const select = document.getElementById('yearFilter');
+            Array.from(years).sort((a, b) => b - a).forEach(year => {
+                const opt = document.createElement('option');
+                opt.value = year;
+                opt.text = `พ.ศ. ${year}`;
+                select.add(opt);
+            });
+        }
+
+        function getThaiYear(dateStr) {
+            if (!dateStr) return null;
+            // ดึงปี ค.ศ. หรือ พ.ศ. จากรูปแบบ "ว/ด/ปปปป"
+            const parts = dateStr.split(',')[0].split('/');
+            let year = parseInt(parts[2]);
+            if (year < 2500) year += 543; // แปลง ค.ศ. เป็น พ.ศ. (ถ้าข้อมูลเป็น ค.ศ.)
+            return year;
+        }
+
+        function renderDashboard() {
+            const selectedYear = document.getElementById('yearFilter').value;
+            const impList = document.getElementById('impressionList');
+            const sugList = document.getElementById('suggestionList');
+            
+            impList.innerHTML = '';
+            sugList.innerHTML = '';
+
+            const filtered = rawData.filter(row => {
+                if (selectedYear === 'all') return true;
+                return getThaiYear(row['ประทับเวลา']) == selectedYear;
+            });
+
+            let countImp = 0;
+            let countSug = 0;
+
+            filtered.forEach(row => {
+                const hospital = row['ท่านทำงานที่ รพ.สต.'] || 'ไม่ระบุหน่วยงาน';
+                const time = row['ประทับเวลา'].split(',')[0];
+                const impression = row['สิ่งที่ประทับใจ ที่ท่านได้รับบริการ'];
+                const suggestion = row['ข้อเสนอแนะ สิ่งที่อยากให้ปรับปรุง'];
+
+                // แสดงสิ่งที่ประทับใจ (ถ้ามี และไม่เท่ากับ "ไม่มี", "-", "ไม่มีข้อเสนอแนะ")
+                if (impression && !['ไม่มี', '-', 'ไม่มีครับ', 'ไม่มีค่ะ'].includes(impression.trim())) {
+                    impList.innerHTML += createCard(hospital, impression, time, 'border-l-emerald-500 bg-emerald-50');
+                    countImp++;
+                }
+
+                // แสดงข้อเสนอแนะ (ถ้ามี)
+                if (suggestion && !['ไม่มี', '-', 'ไม่มีครับ', 'ไม่มีค่ะ'].includes(suggestion.trim())) {
+                    sugList.innerHTML += createCard(hospital, suggestion, time, 'border-l-amber-500 bg-amber-50');
+                    countSug++;
+                }
+            });
+
+            // อัปเดตตัวเลขสรุป
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <p class="text-gray-500 text-sm">ความประทับใจทั้งหมด</p>
+                    <p class="text-3xl font-bold text-emerald-600">${countImp} <span class="text-lg font-normal text-gray-400">เรื่อง</span></p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <p class="text-gray-500 text-sm">ข้อเสนอแนะทั้งหมด</p>
+                    <p class="text-3xl font-bold text-amber-600">${countSug} <span class="text-lg font-normal text-gray-400">เรื่อง</span></p>
+                </div>
+            `;
+
+            if (countImp === 0) impList.innerHTML = '<p class="text-gray-400 italic">ไม่มีข้อมูลความประทับใจในปีนี้</p>';
+            if (countSug === 0) sugList.innerHTML = '<p class="text-gray-400 italic">ไม่มีข้อเสนอแนะในปีนี้</p>';
+        }
+
+        function createCard(title, text, date, styleClass) {
+            return `
+                <div class="card-feedback bg-white p-4 rounded-xl border-l-4 shadow-sm border border-gray-100 ${styleClass}">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-semibold text-gray-700 text-sm">${title}</span>
+                        <span class="text-xs text-gray-400">${date}</span>
+                    </div>
+                    <p class="text-gray-600 leading-relaxed">${text}</p>
+                </div>
+            `;
+        }
+
+        // เริ่มโหลดข้อมูล
+        fetchData();
+    </script>
+</body>
+</html>

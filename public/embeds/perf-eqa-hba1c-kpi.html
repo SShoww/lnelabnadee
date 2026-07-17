@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQA HbA1c KPI Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
+        
+        .header { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white; padding: 15px 25px; border-radius: 15px; 
+            margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .main-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; margin-bottom: 20px; }
+        .left-panel { display: flex; flex-direction: column; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        .kpi-circle-container { position: relative; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #kpiText { position: absolute; top: 55%; font-size: 2.2rem; font-weight: bold; }
+        
+        .filter-section { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+        select, button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Sarabun'; }
+        button { background: #3498db; color: white; border: none; cursor: pointer; font-weight: bold; }
+
+        .stats-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .stat-item { text-align: center; padding: 10px; border-radius: 10px; background: #f8f9fa; }
+        .stat-item span { display: block; font-size: 0.8rem; color: #7f8c8d; }
+
+        .right-panel { display: grid; grid-template-rows: auto 1fr; gap: 20px; }
+        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .large-chart { height: 350px; }
+
+        .table-section { margin-top: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; min-width: 800px; }
+        th { background-color: #2c3e50; color: white; padding: 12px; text-align: center; font-size: 0.9rem; }
+        td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
+        
+        /* Badge Styles */
+        .grade-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; color: white; display: inline-block; min-width: 20px; }
+        .bg-a { background-color: #27ae60; }
+        .bg-b { background-color: #f1c40f; color: #333; }
+        .bg-c { background-color: #e67e22; }
+        .bg-f { background-color: #c0392b; }
+        
+        tr:hover { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 style="margin:0;">EQA HbA1c Performance Dashboard</h2>
+        <div class="filter-section">
+            <select id="startMonth"></select>
+            <span style="color:white">ถึง</span>
+            <select id="endMonth"></select>
+            <button onclick="updateDashboard()">อัปเดตข้อมูล</button>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="left-panel">
+            <div class="card kpi-circle-container">
+                <h3 style="margin-top:0; color:#34495e; font-size: 1rem;">สถานะ KPI (Target 90%)</h3>
+                <canvas id="kpiChart"></canvas>
+                <div id="kpiText">0%</div>
+            </div>
+            <div class="card">
+                <div class="stats-summary">
+                    <div class="stat-item"><span>ทั้งหมด (ครั้ง)</span><strong id="totalCount">-</strong></div>
+                    <div class="stat-item"><span>ผ่าน (A, B)</span><strong id="passCount" style="color:#27ae60;">-</strong></div>
+                    <div class="stat-item"><span>ไม่ผ่าน (C, F)</span><strong id="failCount" style="color:#e74c3c;">-</strong></div>
+                    <div class="stat-item"><span>เกณฑ์ VIS</span><strong>≤ 100</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card large-chart">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="chart-row">
+                <div class="card"><canvas id="gradeDistChart"></canvas></div>
+                <div class="card" style="display: flex; align-items: center; justify-content: center; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #7f8c8d;">
+                        <strong>เกณฑ์การวัดผล VIS</strong><br>
+                        A: 0-50 | B: 51-100<br>
+                        <span style="color:#e67e22; font-weight:bold;">C: 101-150</span> | F: >150<br><br>
+                        <small>*KPI ผ่านที่เกรด A และ B</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card table-section">
+        <h3 style="margin-top:0; color: #2c3e50;">📊 รายละเอียดข้อมูลการทดสอบราย Trial</h3>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Trial No.</th>
+                    <th>เดือน-ปี</th>
+                    <th>Result</th>
+                    <th>DV</th>
+                    <th>Bias (%)</th>
+                    <th>VIS</th>
+                    <th>เกรด</th>
+                    <th>สถานะ</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRP2g3bvNjMdkNuWsn675wbbhuNCbn4ncJ71hxPEE492vGzu46Apxvy0gGUT6PFbOJN_Ezxxl4b5Jo/pub?gid=0&single=true&output=csv';
+    let rawData = [];
+    let charts = {};
+
+    function fetchData() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                // กรองข้อมูลให้สะอาด เอาเฉพาะที่มี Trial และ VIS
+                rawData = results.data.filter(row => row.Trial && row.VIS);
+                populateFilters(rawData);
+                updateDashboard();
+            }
+        });
+    }
+
+    function populateFilters(data) {
+        const startSelect = document.getElementById('startMonth');
+        const endSelect = document.getElementById('endMonth');
+        data.forEach((row, index) => {
+            let opt = document.createElement('option');
+            opt.value = index;
+            opt.text = row['Month-Year'] || row.Trial;
+            startSelect.add(opt.cloneNode(true));
+            endSelect.add(opt);
+        });
+        endSelect.selectedIndex = Math.max(0, data.length - 1);
+    }
+
+    function getGrade(vis) {
+        const v = parseFloat(vis);
+        if (v <= 50) return 'A';
+        if (v <= 100) return 'B';
+        if (v <= 150) return 'C';
+        return 'F';
+    }
+
+    function updateDashboard() {
+        const start = parseInt(document.getElementById('startMonth').value);
+        const end = parseInt(document.getElementById('endMonth').value);
+        const filtered = rawData.slice(Math.min(start, end), Math.max(start, end) + 1);
+
+        let grades = { A: 0, B: 0, C: 0, F: 0 };
+        let labels = [], visValues = [], allItems = [];
+
+        filtered.forEach(row => {
+            const vis = parseFloat(row.VIS);
+            const grade = getGrade(vis);
+            grades[grade]++;
+            labels.push(row['Month-Year'] || row.Trial);
+            visValues.push(vis);
+            
+            allItems.push({ 
+                trial: row.Trial, 
+                month: row['Month-Year'],
+                result: row.result || '-',
+                dv: row.DV || '-',
+                bias: row['Bias '] || row.Bias || '-', // รองรับกรณีมี space ท้ายชื่อ column
+                vis: vis, 
+                grade: grade 
+            });
+        });
+
+        const total = filtered.length;
+        const pass = grades.A + grades.B;
+        const kpi = total > 0 ? ((pass / total) * 100).toFixed(1) : 0;
+
+        document.getElementById('kpiText').innerText = kpi + '%';
+        document.getElementById('kpiText').style.color = kpi >= 90 ? '#27ae60' : '#e74c3c';
+
+        document.getElementById('totalCount').innerText = total;
+        document.getElementById('passCount').innerText = pass;
+        document.getElementById('failCount').innerText = grades.C + grades.F;
+
+        renderKPIChart(kpi, kpi >= 90 ? '#27ae60' : '#e74c3c');
+        renderTrendChart(labels, visValues);
+        renderGradeDist(grades);
+        updateDataTable(allItems);
+    }
+
+    function renderKPIChart(percent, color) {
+        if(charts.kpi) charts.kpi.destroy();
+        charts.kpi = new Chart(document.getElementById('kpiChart'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [percent, 100 - percent],
+                    backgroundColor: [color, '#ecf0f1'],
+                    borderWidth: 0
+                }]
+            },
+            options: { cutout: '80%', plugins: { tooltip: { enabled: false } } }
+        });
+    }
+
+    function renderTrendChart(labels, values) {
+        if(charts.trend) charts.trend.destroy();
+        charts.trend = new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'ค่า VIS',
+                    data: values,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'VIS Score' } }
+                }
+            }
+        });
+    }
+
+    function renderGradeDist(grades) {
+        if(charts.dist) charts.dist.destroy();
+        charts.dist = new Chart(document.getElementById('gradeDistChart'), {
+            type: 'bar',
+            data: {
+                labels: ['A', 'B', 'C', 'F'],
+                datasets: [{
+                    label: 'จำนวนครั้ง',
+                    data: [grades.A, grades.B, grades.C, grades.F],
+                    backgroundColor: ['#27ae60', '#f1c40f', '#e67e22', '#e74c3c']
+                }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateDataTable(items) {
+        const tbody = document.getElementById('dataTableBody');
+        tbody.innerHTML = '';
+        
+        items.forEach(item => {
+            const gradeClass = `bg-${item.grade.toLowerCase()}`;
+            const statusText = (item.grade === 'A' || item.grade === 'B') 
+                ? '<b style="color:#27ae60">PASS</b>' 
+                : '<b style="color:#c0392b">FAIL</b>';
+
+            tbody.innerHTML += `<tr>
+                <td>${item.trial}</td>
+                <td>${item.month}</td>
+                <td><strong>${item.result}</strong></td>
+                <td>${item.dv}</td>
+                <td style="color: ${parseFloat(item.bias) < 0 ? '#c0392b' : '#2c3e50'}">${item.bias}</td>
+                <td>${item.vis}</td>
+                <td><span class="grade-badge ${gradeClass}">${item.grade}</span></td>
+                <td>${statusText}</td>
+            </tr>`;
+        });
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>

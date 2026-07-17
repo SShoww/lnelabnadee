@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQAC CV Monitor - Alert System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 20px; background-color: #f4f7f6; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; }
+        
+        /* Summary Cards Style */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { padding: 15px; border-radius: 12px; text-align: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s; }
+        .card h4 { margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; }
+        .card p { margin: 0; font-size: 1.8em; font-weight: bold; }
+        .bg-blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .bg-orange { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .bg-red { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+        .controls { margin-bottom: 25px; display: flex; justify-content: center; align-items: center; gap: 15px; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 10px; }
+        select { padding: 10px 20px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; font-family: 'Sarabun'; cursor: pointer; min-width: 250px; }
+        .chart-container { position: relative; height: 60vh; width: 100%; }
+        .loading { text-align: center; color: #3498db; padding: 100px; font-weight: bold; }
+        .legend-info { display: flex; justify-content: center; gap: 20px; font-size: 0.85em; margin-top: 15px; flex-wrap: wrap; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>EQAC Dashboard (%CV Monitor)</h2>
+    <p class="subtitle">ระบบดึงข้อมูลจาก Google Sheets และแจ้งเตือนอัตโนมัติ</p>
+
+    <div id="summarySection" class="summary-grid" style="display:none;">
+        <div class="card bg-blue">
+            <h4>%CV เฉลี่ยสะสมล่าสุด</h4>
+            <p id="stat-cum">-</p>
+        </div>
+        <div class="card bg-orange">
+            <h4>Trial ที่สูงกว่าค่าเฉลี่ย</h4>
+            <p id="stat-above-avg">-</p>
+        </div>
+        <div class="card bg-red">
+            <h4>Trial ที่เกินเกณฑ์ TEa</h4>
+            <p id="stat-out-limit">-</p>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label for="testSelector"><strong>เลือกรายการทดสอบ:</strong></label>
+        <select id="testSelector">
+            <option value="all">แสดงทั้งหมด (Summary View)</option>
+        </select>
+    </div>
+
+    <div id="loading" class="loading">กำลังโหลดข้อมูลจาก Google Sheets...</div>
+    <div class="chart-container">
+        <canvas id="cvChart"></canvas>
+    </div>
+
+    <div class="legend-info" id="legendExtra" style="display:none;">
+        <span><span class="dot" style="background-color: rgba(231, 76, 60, 0.9);"></span> วิกฤต (เกินเกณฑ์ 0.33 TEa)</span>
+        <span><span class="dot" style="background-color: rgba(243, 156, 18, 0.7);"></span> เฝ้าระวัง (สูงกว่าค่าเฉลี่ยสะสม)</span>
+        <span><span class="dot" style="background-color: rgba(52, 152, 219, 0.3);"></span> ปกติ (ต่ำกว่าค่าเฉลี่ย)</span>
+    </div>
+</div>
+
+<script>
+    // อัปเดต URL ใหม่ตามที่ระบุ
+    const cvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=500696314&single=true&output=csv';
+    const teaUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1948460832&single=true&output=csv';
+
+    let chart;
+    let rawCVData = {}; 
+    let cumCVData = {}; 
+    let targetTEa = {}; 
+    let tests = [];
+    let trials = [];
+
+    async function init() {
+        const fetchCSV = (url) => new Promise(r => Papa.parse(url, {
+            download: true, 
+            header: true, 
+            dynamicTyping: true, 
+            skipEmptyLines: true,
+            complete: res => r(res.data)
+        }));
+
+        try {
+            const [cvRows, teaRows] = await Promise.all([fetchCSV(cvUrl), fetchCSV(teaUrl)]);
+            
+            if (cvRows.length === 0) throw "No data found in CV sheet";
+
+            // ดึงชื่อหัวข้อ Trial และรายการ Test ทั้งหมด
+            trials = cvRows.map(r => `T${r.Trial || r.trial || ''}`);
+            tests = Object.keys(cvRows[0]).filter(k => k.toLowerCase() !== 'trial');
+
+            // จัดการข้อมูลราย Test
+            tests.forEach(test => {
+                const values = cvRows.map(r => parseFloat(r[test]) || 0);
+                rawCVData[test] = values;
+                
+                // คำนวณค่าเฉลี่ยสะสม (Cumulative Mean)
+                let sum = 0;
+                cumCVData[test] = values.map((v, i) => {
+                    sum += v;
+                    return parseFloat((sum / (i + 1)).toFixed(2));
+                });
+
+                // ดึงค่า TEa (หาจาก row แรกของไฟล์ TEa ที่ชื่อคอลัมน์ตรงกัน)
+                const baseTEa = teaRows[0] ? (parseFloat(teaRows[0][test]) || 0) : 0;
+                targetTEa[test] = (baseTEa * 0.33).toFixed(2);
+            });
+
+            // สร้างตัวเลือกใน Dropdown
+            const sel = document.getElementById('testSelector');
+            tests.forEach(t => sel.add(new Option(t, t)));
+            
+            document.getElementById('loading').style.display = 'none';
+            updateChart('all');
+        } catch (e) { 
+            console.error(e);
+            document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล: " + e;
+        }
+    }
+
+    function updateChart(selected) {
+        const ctx = document.getElementById('cvChart').getContext('2d');
+        const summarySection = document.getElementById('summarySection');
+        const legendExtra = document.getElementById('legendExtra');
+        let datasets = [];
+
+        if (selected === 'all') {
+            summarySection.style.display = 'none';
+            legendExtra.style.display = 'none';
+            tests.forEach((t, i) => {
+                datasets.push({
+                    label: t,
+                    data: cumCVData[t],
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    fill: false,
+                    tension: 0.2
+                });
+            });
+        } else {
+            summarySection.style.display = 'grid';
+            legendExtra.style.display = 'flex';
+            
+            const threshold = parseFloat(targetTEa[selected]);
+            const currentRaw = rawCVData[selected];
+            const currentCum = cumCVData[selected];
+
+            let countAboveAvg = 0;
+            let countOutLimit = 0;
+            
+            const barColors = currentRaw.map((val, i) => {
+                if (val > threshold) {
+                    countOutLimit++;
+                    return 'rgba(231, 76, 60, 0.9)'; // แดง
+                }
+                if (val > currentCum[i]) {
+                    countAboveAvg++;
+                    return 'rgba(243, 156, 18, 0.7)'; // ส้ม
+                }
+                return 'rgba(52, 152, 219, 0.3)'; // ฟ้า
+            });
+
+            document.getElementById('stat-cum').innerText = currentCum[currentCum.length - 1] + '%';
+            document.getElementById('stat-above-avg').innerText = countAboveAvg + ' ครั้ง';
+            document.getElementById('stat-out-limit').innerText = countOutLimit + ' ครั้ง';
+
+            datasets.push({
+                label: `%CV ราย Trial`,
+                data: currentRaw,
+                backgroundColor: barColors,
+                borderColor: barColors.map(c => c.replace('0.3', '0.8').replace('0.7', '1').replace('0.9', '1')),
+                borderWidth: 1,
+                type: 'bar',
+                order: 3
+            });
+
+            datasets.push({
+                label: `%CV เฉลี่ยสะสม`,
+                data: currentCum,
+                borderColor: '#2ecc71',
+                borderWidth: 3,
+                pointRadius: 4,
+                fill: false,
+                tension: 0.3,
+                order: 1
+            });
+
+            datasets.push({
+                label: `เกณฑ์ 0.33 × TEa (${threshold}%)`,
+                data: Array(trials.length).fill(threshold),
+                borderColor: '#e74c3c',
+                borderWidth: 2,
+                borderDash: [10, 5],
+                pointRadius: 0,
+                fill: false,
+                order: 2
+            });
+        }
+
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: trials, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                let val = context.parsed.y;
+                                label += ': ' + val + '%';
+                                if (context.dataset.type === 'bar') {
+                                    if (val > targetTEa[selected]) label += ' ❌ เกินเกณฑ์!';
+                                    else if (val > cumCVData[selected][context.dataIndex]) label += ' ⚠️ สูงกว่าค่าเฉลี่ย';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Percentage (%)' } } }
+            }
+        });
+    }
+
+    document.getElementById('testSelector').onchange = (e) => updateChart(e.target.value);
+    init();
+</script>
+
+</body>
+</html>

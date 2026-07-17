@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DTX POCT Advanced Dashboard (Lot & Month Tracking)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
+        .container { max-width: 1300px; margin: auto; }
+        .header-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border-top: 5px solid #6f42c1; }
+        .status-bar { text-align: center; margin-bottom: 10px; font-size: 0.85em; color: #666; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 15px; }
+        .filter-item { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 5px; font-size: 0.9em; color: #444; }
+        select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Sarabun'; }
+        .chart-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .table-card { background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85em; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
+        th { background-color: #6f42c1; color: white; position: sticky; top: 0; }
+        .out-of-control { background-color: #fff0f0; color: #d0021b; font-weight: bold; }
+        .status-badge { padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 0.8em; }
+        .pass { background: #e6f4ea; color: #1e8e3e; }
+        .fail { background: #fce8e6; color: #d93025; }
+        .btn-refresh { background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; transition: 0.2s; }
+        .btn-refresh:hover { background: #5a32a3; }
+        .stats-text { font-size: 0.8em; color: #444; font-weight: normal; background: #f1f5f9; padding: 2px 8px; border-radius: 5px; margin-left: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-card">
+        <h2 style="text-align: center; color: #2c3e50; margin: 0;">🧪 DTX POCT Quality Control Tracking</h2>
+        <div class="status-bar">
+            <span>ข้อมูลล่าสุด: </span><span id="lastUpdate">-</span>
+            <button class="btn-refresh" onclick="fetchData()">🔄 ดึงข้อมูลใหม่</button>
+        </div>
+
+        <div class="filter-grid">
+            <div class="filter-item">
+                <label>📅 เลือกเดือน</label>
+                <select id="monthSelect"><option value="ALL">-- ทั้งหมด --</option></select>
+            </div>
+            <div class="filter-item">
+                <label>🏢 หน่วยงาน</label>
+                <select id="deptSelect"><option value="ALL">-- ทั้งหมด --</option></select>
+            </div>
+            <div class="filter-item">
+                <label>📟 SN เครื่อง</label>
+                <select id="snSelect"><option value="ALL">-- ทั้งหมด --</option></select>
+            </div>
+            <div class="filter-item">
+                <label>🎞️ Lot Strip</label>
+                <select id="lotStripSelect"><option value="ALL">-- ทั้งหมด --</option></select>
+            </div>
+            <div class="filter-item">
+                <label>💧 Lot Control</label>
+                <select id="lotControlSelect"><option value="ALL">-- ทั้งหมด --</option></select>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardView">
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h4 style="color:#f39c12; margin:0 0 10px 0;">LOW Control <span id="infoLow" class="stats-text"></span></h4>
+                <canvas id="chartLow" height="100"></canvas>
+            </div>
+            <div class="chart-card">
+                <h4 style="color:#27ae60; margin:0 0 10px 0;">NORMAL Control <span id="infoNormal" class="stats-text"></span></h4>
+                <canvas id="chartNormal" height="100"></canvas>
+            </div>
+            <div class="chart-card">
+                <h4 style="color:#e74c3c; margin:0 0 10px 0;">HIGH Control <span id="infoHigh" class="stats-text"></span></h4>
+                <canvas id="chartHigh" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h3>📋 รายงานผลการวิเคราะห์</h3>
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>วัน-เวลา</th>
+                        <th>หน่วยงาน</th>
+                        <th>SN</th>
+                        <th>Lot Strip</th>
+                        <th>Lot Control</th>
+                        <th>ระดับ</th>
+                        <th>ค่าที่วัดได้</th>
+                        <th>เกณฑ์ (±2SD)</th>
+                        <th>ผล</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR_zCcWwDY2ikbQHb8sttWsJ9HUaZI6ogjZJ1Pkwc-2VqAGPS9Km27rA8Xq1QL8i9T_w1fEgB60rY3A/pub?gid=1258409656&single=true&output=csv';
+    let rawData = [];
+    let charts = {};
+
+    // ฟังก์ชันช่วยสกัด "เดือน/ปี" ออกมาจากข้อความ ประทับเวลา (เช่น "30/12/2025, 7:14:26" -> "12/2025")
+    function getMonthYear(timestampStr) {
+        if (!timestampStr) return "";
+        const parts = timestampStr.split('/');
+        if (parts.length >= 3) {
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2].split(',')[0].trim();
+            return `${month}/${year}`;
+        }
+        return "";
+    }
+
+    function fetchData() {
+        Papa.parse(SHEET_URL, {
+            download: true, header: true, skipEmptyLines: true,
+            complete: function(results) {
+                rawData = results.data;
+                document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
+                initAllFilters();
+                updateDashboard();
+            }
+        });
+    }
+
+    function initAllFilters() {
+        // ส่วนจัดการ Filter เดือนแยกออกมาพิเศษ
+        const monthSelect = document.getElementById('monthSelect');
+        const currentMonthVal = monthSelect.value;
+        const uniqueMonths = [...new Set(rawData.map(item => getMonthYear(item['ประทับเวลา'])))].filter(Boolean).sort();
+        
+        monthSelect.innerHTML = '<option value="ALL">-- ทั้งหมด --</option>';
+        uniqueMonths.forEach(m => {
+            const selected = m === currentMonthVal ? 'selected' : '';
+            monthSelect.innerHTML += `<option value="${m}" ${selected}>${m}</option>`;
+        });
+        monthSelect.onchange = updateDashboard;
+
+        // ตัวกรองปกติที่เหลือ
+        const filters = [
+            { id: 'deptSelect', key: 'หน่วยบริการ' },
+            { id: 'snSelect', key: 'SN เครื่อง DTX' },
+            { id: 'lotStripSelect', key: 'Lot Strip DTX' },
+            { id: 'lotControlSelect', key: 'Lot control' }
+        ];
+
+        filters.forEach(f => {
+            const select = document.getElementById(f.id);
+            const currentVal = select.value;
+            const uniqueVals = [...new Set(rawData.map(item => item[f.key]))].filter(Boolean).sort();
+             
+            select.innerHTML = '<option value="ALL">-- ทั้งหมด --</option>';
+            uniqueVals.forEach(v => {
+                const selected = v === currentVal ? 'selected' : '';
+                select.innerHTML += `<option value="${v}" ${selected}>${v}</option>`;
+            });
+
+            select.onchange = updateDashboard;
+        });
+    }
+
+    function updateDashboard() {
+        const targetMonth = document.getElementById('monthSelect').value;
+        const dept = document.getElementById('deptSelect').value;
+        const sn = document.getElementById('snSelect').value;
+        const lotS = document.getElementById('lotStripSelect').value;
+        const lotC = document.getElementById('lotControlSelect').value;
+
+        let filtered = rawData.filter(item => {
+            const itemMonth = getMonthYear(item['ประทับเวลา']);
+            return (targetMonth === "ALL" || itemMonth === targetMonth) &&
+                   (dept === "ALL" || item['หน่วยบริการ'] === dept) &&
+                   (sn === "ALL" || item['SN เครื่อง DTX'] === sn) &&
+                   (lotS === "ALL" || item['Lot Strip DTX'] === lotS) &&
+                   (lotC === "ALL" || item['Lot control'] === lotC);
+        });
+
+        renderContent(filtered);
+    }
+
+    // ฟังก์ชันคำนวณสถิติ เพิ่มการคิดค่า %CV
+    function calculateStats(arr) {
+        const n = arr.length;
+        if (n < 2) return { mean: arr[0] || 0, sd: 0, cv: 0 };
+        const mean = arr.reduce((a, b) => a + b, 0) / n;
+        const sd = Math.sqrt(arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / (n - 1));
+        const cv = mean !== 0 ? (sd / mean) * 100 : 0; // สูตรคำนวณ %CV
+        return { mean, sd, cv };
+    }
+
+    function renderContent(data) {
+        const labels = data.map(d => d['ประทับเวลา']);
+        const levels = [
+            { id: 'chartLow', infoId: 'infoLow', key: 'quality control low ', label: 'LOW', color: '#f39c12' },
+            { id: 'chartNormal', infoId: 'infoNormal', key: 'quality control normal', label: 'NORMAL', color: '#27ae60' },
+            { id: 'chartHigh', infoId: 'infoHigh', key: 'quality control high', label: 'HIGH', color: '#e74c3c' }
+        ];
+
+        const tbody = document.querySelector("#resultTable tbody");
+        tbody.innerHTML = "";
+
+        levels.forEach(lvl => {
+            const values = data.map(d => parseFloat(d[lvl.key])).filter(v => !isNaN(v));
+            const stats = calculateStats(values);
+            
+            // แสดงข้อมูลสถิติรวมถึงค่า %CV ลงในหัวข้อกราฟ
+            document.getElementById(lvl.infoId).innerHTML = `n=${values.length} | <strong>Mean:</strong> ${stats.mean.toFixed(1)} | <strong>SD:</strong> ${stats.sd.toFixed(2)} | <span style="color:#6f42c1;"><strong>%CV:</strong> ${stats.cv.toFixed(2)}%</span>`;
+            
+            renderChart(lvl.id, labels, values, stats, lvl.color);
+
+            data.forEach(row => {
+                const val = parseFloat(row[lvl.key]);
+                if (isNaN(val)) return; // ข้ามแถวที่ไม่มีข้อมูลในระดับนั้นๆ
+                
+                const ucl = stats.mean + (2 * stats.sd);
+                const lcl = stats.mean - (2 * stats.sd);
+                const isOut = val > ucl || val < lcl;
+                
+                const tr = document.createElement('tr');
+                if(isOut) tr.className = 'out-of-control';
+                tr.innerHTML = `
+                    <td>${row['ประทับเวลา']}</td>
+                    <td>${row['หน่วยบริการ']}</td>
+                    <td>${row['SN เครื่อง DTX']}</td>
+                    <td>${row['Lot Strip DTX']}</td>
+                    <td>${row['Lot control']}</td>
+                    <td style="font-weight:600">${lvl.label}</td>
+                    <td>${val}</td>
+                    <td>${lcl.toFixed(1)} - ${ucl.toFixed(1)}</td>
+                    <td><span class="status-badge ${isOut ? 'fail' : 'pass'}">${isOut ? 'OUT' : 'PASS'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    function renderChart(id, labels, data, stats, color) {
+        if (charts[id]) charts[id].destroy();
+        const m = stats.mean;
+        const sd = stats.sd;
+        charts[id] = new Chart(document.getElementById(id), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'ค่าที่วัดได้', data: data, borderColor: color, pointBackgroundColor: color, fill: false, tension: 0.1 },
+                    { label: 'Mean', data: Array(data.length).fill(m), borderColor: '#333', borderDash: [5,5], pointRadius: 0 },
+                    { label: '±2SD', data: Array(data.length).fill(m + 2*sd), borderColor: 'red', borderDash: [2,2], pointRadius: 0 },
+                    { label: '', data: Array(data.length).fill(m - 2*sd), borderColor: 'red', borderDash: [2,2], pointRadius: 0 }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>

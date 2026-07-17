@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Dashboard - Hemato SDI Tracking</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root { 
+            --excellent: #2f855a; --good: #3182ce; --acc: #ecc94b; --fail: #e53e3e;
+            --bg: #f8fafc; --card-bg: #ffffff; --green: #38a169;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #2d3748; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        
+        /* Filter Section */
+        .filter-section { 
+            display: flex; justify-content: center; align-items: center; gap: 15px; 
+            margin-bottom: 25px; background: var(--card-bg); padding: 20px; 
+            border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap;
+        }
+        select { padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.95rem; min-width: 140px; }
+
+        /* Stats Cards */
+        .stats-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 1.5rem; font-weight: 800; display: block; }
+        .stat-label { font-size: 0.85rem; color: #718096; text-transform: uppercase; }
+
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); flex: 1; min-width: 350px; }
+        
+        /* KPI Circle */
+        .left-panel { flex: 0.7; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .progress-container { position: relative; width: 180px; height: 180px; margin-bottom: 15px; }
+        .progress-ring { transform: rotate(-90deg); }
+        .progress-ring__circle { stroke-dasharray: 502.65; transition: stroke-dashoffset 0.6s ease; stroke-width: 12; fill: transparent; stroke-linecap: round; }
+        .bg-circle { stroke: #edf2f7; stroke-width: 12; fill: transparent; }
+        .kpi-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; font-weight: 800; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7; }
+        th { color: #718096; font-size: 0.75rem; text-transform: uppercase; }
+        
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; color: white; }
+        .bg-ex { background: var(--excellent); }
+        .bg-gd { background: var(--good); }
+        .bg-ac { background: var(--acc); color: #856404; }
+        .bg-fl { background: var(--fail); }
+
+        .loading { text-align: center; padding: 50px; font-size: 1.2rem; color: #a0aec0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Hemato EQAM Quality Monitoring</h1>
+        <p>เกณฑ์มาตรฐานการยอมรับ (Acceptable): $|SDI| < 2.00$</p>
+    </div>
+
+    <div class="filter-section">
+        <div><label>ตั้งแต่:</label> <select id="startTrial" onchange="filterData()"></select></div>
+        <div><label>ถึง:</label> <select id="endTrial" onchange="filterData()"></select></div>
+    </div>
+
+    <div id="loader" class="loading">⏳ กำลังประมวลผลข้อมูล SDI...</div>
+
+    <div id="dashboard-content" style="display:none;">
+        <div class="stats-overview">
+            <div class="stat-card">
+                <span class="stat-label">รายการทดสอบทั้งหมด</span>
+                <span id="stat-total" class="stat-value">-</span>
+            </div>
+            <div class="stat-card" style="border-bottom: 4px solid var(--green);">
+                <span class="stat-label">ผ่านเกณฑ์ (Pass)</span>
+                <span id="stat-pass" class="stat-value" style="color: var(--green);">-</span>
+            </div>
+            <div class="stat-card" style="border-bottom: 4px solid var(--fail);">
+                <span class="stat-label">หลุดเกณฑ์ (Fail)</span>
+                <span id="stat-fail" class="stat-value" style="color: var(--fail);">-</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card left-panel">
+                <h3>% Pass Overall</h3>
+                <div class="progress-container">
+                    <svg class="progress-ring" width="180" height="180">
+                        <circle class="bg-circle" r="80" cx="90" cy="90"/>
+                        <circle id="kpi-circle" class="progress-ring__circle" r="80" cx="90" cy="90" stroke="currentColor"/>
+                    </svg>
+                    <div class="kpi-text" id="kpi-percent">0%</div>
+                </div>
+                
+                <table style="font-size: 0.85rem; margin-top: 15px;">
+                    <tr><td><span class="badge bg-ex">Excellent</span> $|SDI| \le 0.5$</td> <td id="count-ex" style="text-align:right;">0</td></tr>
+                    <tr><td><span class="badge bg-gd">Good</span> $|SDI| \le 1.0$</td> <td id="count-gd" style="text-align:right;">0</td></tr>
+                    <tr><td><span class="badge bg-ac">Acceptable</span> $|SDI| < 2.0$</td> <td id="count-ac" style="text-align:right;">0</td></tr>
+                    <tr><td><span class="badge bg-fl">Unacceptable</span> $|SDI| \ge 2.0$</td> <td id="count-fl" style="text-align:right;">0</td></tr>
+                </table>
+            </div>
+
+            <div class="card right-panel">
+                <h3 style="color: var(--fail);">⚠️ รายการที่หลุดเกณฑ์บ่อย (Top 5)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>รายการ</th>
+                            <th style="text-align:center;">จำนวนครั้งที่ Fail</th>
+                            <th>Trial ที่พบปัญหา</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fail-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // เชื่อมต่อกับ URL ใหม่ที่คุณให้มา
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1715832179&single=true&output=csv';
+    let rawData = [];
+    let testKeys = [];
+
+    Papa.parse(csvUrl, {
+        download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+        complete: function(results) {
+            rawData = results.data;
+            // กรองเอาเฉพาะชื่อคอลัมน์ที่เป็นค่าทดสอบ
+            testKeys = results.meta.fields.filter(h => h !== 'Trial' && h !== 'Year');
+            setupFilters();
+            filterData();
+        }
+    });
+
+    function setupFilters() {
+        const startSelect = document.getElementById('startTrial');
+        const endSelect = document.getElementById('endTrial');
+        // ดึงรายการ Trial และเรียงลำดับแบบ String (รองรับ B6801, B6802)
+        const trials = [...new Set(rawData.map(row => row.Trial))].filter(t => t).sort();
+        
+        trials.forEach(t => {
+            startSelect.add(new Option(t, t));
+            endSelect.add(new Option(t, t));
+        });
+        
+        startSelect.value = trials[0];
+        endSelect.value = trials[trials.length - 1];
+    }
+
+    function filterData() {
+        const start = document.getElementById('startTrial').value;
+        const end = document.getElementById('endTrial').value;
+        
+        // กรองข้อมูลตามช่วง Trial ที่เลือก (ใช้การเปรียบเทียบ string)
+        const filtered = rawData.filter(row => {
+            return row.Trial >= start && row.Trial <= end;
+        });
+        processData(filtered);
+    }
+
+    function processData(data) {
+        let stats = { total: 0, pass: 0, fail: 0, ex: 0, gd: 0, ac: 0, fl: 0 };
+        let failMap = {};
+
+        data.forEach(row => {
+            testKeys.forEach(key => {
+                const val = row[key];
+                // ตรวจสอบว่าเป็นตัวเลขหรือไม่
+                if (val !== null && !isNaN(parseFloat(val))) {
+                    const absVal = Math.abs(val);
+                    stats.total++;
+                    
+                    if (absVal < 2) {
+                        stats.pass++;
+                        if (absVal <= 0.5) stats.ex++;
+                        else if (absVal <= 1.0) stats.gd++;
+                        else stats.ac++;
+                    } else {
+                        stats.fail++;
+                        stats.fl++;
+                        if (!failMap[key]) failMap[key] = { count: 0, trials: [] };
+                        failMap[key].count++;
+                        failMap[key].trials.push(row.Trial);
+                    }
+                }
+            });
+        });
+
+        const passRate = stats.total > 0 ? ((stats.pass / stats.total) * 100).toFixed(1) : 0;
+        const sortedFails = Object.entries(failMap).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+        
+        updateUI(passRate, stats, sortedFails);
+    }
+
+    function updateUI(rate, stats, fails) {
+        document.getElementById('stat-total').innerText = stats.total;
+        document.getElementById('stat-pass').innerText = stats.pass;
+        document.getElementById('stat-fail').innerText = stats.fail;
+        
+        document.getElementById('count-ex').innerText = stats.ex;
+        document.getElementById('count-gd').innerText = stats.gd;
+        document.getElementById('count-ac').innerText = stats.ac;
+        document.getElementById('count-fl').innerText = stats.fl;
+
+        const circle = document.getElementById('kpi-circle');
+        const circumference = 2 * Math.PI * 80;
+        circle.style.strokeDashoffset = circumference - (rate / 100 * circumference);
+        circle.style.color = rate >= 90 ? '#38a169' : '#e53e3e';
+        
+        const pctText = document.getElementById('kpi-percent');
+        pctText.innerText = rate + '%';
+        pctText.style.color = circle.style.color;
+
+        const tbody = document.getElementById('fail-body');
+        tbody.innerHTML = fails.length ? fails.map(([name, d]) => `
+            <tr>
+                <td><b>${name}</b></td>
+                <td style="text-align:center; color:var(--fail); font-weight:bold;">${d.count}</td>
+                <td>${d.trials.map(t => `<small style="background:#edf2f7; padding:2px 5px; border-radius:4px; margin:2px; display:inline-block;">${t}</small>`).join('')}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="3" style="text-align:center; padding:20px; color:green;">✨ ทุกรายการอยู่ในเกณฑ์มาตรฐาน $|SDI| < 2.0$</td></tr>';
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+    }
+</script>
+</body>
+</html>

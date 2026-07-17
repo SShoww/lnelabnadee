@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Dashboard - Hemato SDI Tracking</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root { 
+            --excellent: #10b981;
+            --good: #3b82f6;
+            --acc: #f59e0b;
+            --fail: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; 
+            padding: 30px 20px; 
+            color: var(--text-main); 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .container { max-width: 1200px; margin: auto; }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin: 0 0 10px 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; }
+        .header p { margin: 0; color: var(--text-sub); font-size: 1rem; }
+
+        /* Filter Section */
+        .filter-section { 
+            display: flex; justify-content: center; align-items: center; gap: 20px; 
+            margin-bottom: 30px; background: var(--card-bg); padding: 16px 24px; 
+            border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .filter-group { display: flex; align-items: center; gap: 10px; }
+        .filter-group label { font-weight: 600; font-size: 0.95rem; color: var(--text-main); }
+        select { 
+            padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border); 
+            font-size: 0.95rem; min-width: 150px; background-color: #fff; cursor: pointer;
+            outline: none; transition: all 0.2s;
+        }
+        select:focus { border-color: var(--good); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+        /* Stats Cards */
+        .stats-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .stat-card { 
+            background: white; padding: 24px; border-radius: 16px; text-align: center; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; overflow: hidden;
+        }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .stat-card.total::before { background: var(--text-sub); }
+        .stat-card.pass::before { background: var(--excellent); }
+        .stat-card.fail::before { background: var(--fail); }
+        .stat-value { font-size: 2rem; font-weight: 800; display: block; margin-top: 5px; }
+        .stat-label { font-size: 0.85rem; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 25px; align-items: start; }
+        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; margin-bottom: 20px; font-size: 1.25rem; font-weight: 700; }
+        
+        /* KPI Circle */
+        .left-panel { display: flex; flex-direction: column; align-items: center; }
+        .progress-container { position: relative; width: 180px; height: 180px; margin: 10px 0 25px 0; }
+        .progress-ring { transform: rotate(-90deg); }
+        .progress-ring__circle { stroke-dasharray: 502.65; transition: stroke-dashoffset 0.6s ease; stroke-width: 14; fill: transparent; stroke-linecap: round; }
+        .bg-circle { stroke: #f1f5f9; stroke-width: 14; fill: transparent; }
+        .kpi-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; font-weight: 800; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+        th { color: var(--text-sub); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        td { font-size: 0.95rem; }
+        
+        .badge { padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: white; display: inline-block; }
+        .bg-ex { background: var(--excellent); }
+        .bg-gd { background: var(--good); }
+        .bg-ac { background: var(--acc); }
+        .bg-fl { background: var(--fail); }
+
+        /* Trial Tags clickable */
+        .trial-tag { 
+            background: #f1f5f9; padding: 4px 10px; border-radius: 6px; margin: 3px; 
+            display: inline-block; font-size: 0.85rem; font-weight: 600; color: #475569; 
+            cursor: pointer; transition: all 0.2s; border: 1px solid #e2e8f0;
+        }
+        .trial-tag:hover { background: var(--good); color: white; border-color: var(--good); transform: translateY(-1px); }
+
+        /* Popup Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-container {
+            background: white; width: 90%; max-width: 550px; max-height: 80vh; border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            padding: 30px; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-container { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; }
+        .modal-header h2 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+        .close-btn { background: #f1f5f9; border: none; font-size: 1.2rem; font-weight: bold; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-sub); }
+        .close-btn:hover { background: #e2e8f0; color: var(--text-main); }
+        .modal-body { overflow-y: auto; padding-right: 5px; }
+        
+        .modal-grid-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f8fafc; }
+        .modal-grid-row:hover { background-color: #f8fafc; }
+        .modal-grid-row .test-name { font-weight: 600; }
+        .modal-grid-row .sdi-val { font-family: monospace; font-size: 1.05rem; font-weight: 700; }
+
+        .loading { text-align: center; padding: 60px; font-size: 1.2rem; color: var(--text-sub); font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Hemato EQAM Quality Monitoring</h1>
+        <p>เกณฑ์มาตรฐานการยอมรับ (Acceptable): <strong>|SDI| &lt; 2.00</strong></p>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-group">
+            <label>เลือกปี:</label> 
+            <select id="yearSelect" onchange="updateTrialFilter()"></select>
+        </div>
+        <div class="filter-group">
+            <label>เลือก Trial:</label> 
+            <select id="trialSelect" onchange="filterData()"></select>
+        </div>
+    </div>
+
+    <div id="loader" class="loading">⏳ กำลังประมวลผลข้อมูล SDI...</div>
+
+    <div id="dashboard-content" style="display:none;">
+        <div class="stats-overview">
+            <div class="stat-card total">
+                <span class="stat-label">รายการทดสอบทั้งหมด</span>
+                <span id="stat-total" class="stat-value">-</span>
+            </div>
+            <div class="stat-card pass">
+                <span class="stat-label">ผ่านเกณฑ์ (Pass)</span>
+                <span id="stat-pass" class="stat-value" style="color: var(--excellent);">-</span>
+            </div>
+            <div class="stat-card fail">
+                <span class="stat-label">หลุดเกณฑ์ (Fail)</span>
+                <span id="stat-fail" class="stat-value" style="color: var(--fail);">-</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card left-panel">
+                <h3>% Pass Overall</h3>
+                <div class="progress-container">
+                    <svg class="progress-ring" width="180" height="180">
+                        <circle class="bg-circle" r="80" cx="90" cy="90"/>
+                        <circle id="kpi-circle" class="progress-ring__circle" r="80" cx="90" cy="90" stroke="currentColor"/>
+                    </svg>
+                    <div class="kpi-text" id="kpi-percent">0%</div>
+                </div>
+                
+                <table style="font-size: 0.85rem; width: 100%;">
+                    <tr><td><span class="badge bg-ex">Excellent</span> |SDI| &le; 0.5</td> <td id="count-ex" style="text-align:right; font-weight:700;">0</td></tr>
+                    <tr><td><span class="badge bg-gd">Good</span> |SDI| &le; 1.0</td> <td id="count-gd" style="text-align:right; font-weight:700;">0</td></tr>
+                    <tr><td><span class="badge bg-ac">Acceptable</span> |SDI| &lt; 2.0</td> <td id="count-ac" style="text-align:right; font-weight:700;">0</td></tr>
+                    <tr><td><span class="badge bg-fl">Unacceptable</span> |SDI| &ge; 2.0</td> <td id="count-fl" style="text-align:right; font-weight:700;">0</td></tr>
+                </table>
+            </div>
+
+            <div class="card right-panel">
+                <h3 style="color: var(--fail); display: flex; align-items: center; gap: 8px;">⚠️ รายการที่หลุดเกณฑ์บ่อย (Top 5)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">รายการ</th>
+                            <th style="text-align:center; width: 25%;">จำนวนครั้งที่ Fail</th>
+                            <th style="width: 35%;">Trial ที่พบปัญหา <br><small style="text-transform:none; color:#a0aec0;">(คลิกเพื่อดูผลลัพธ์)</small></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fail-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="trialModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 id="modalTitle">Trial Details</h2>
+            <button class="close-btn" onclick="toggleModal(false)">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQTY5oIAAuokBMbsG02BfhUGQZyDfa8bfeEL92fTmLTNHS6ubeQuHuGpTHpmfBl3MOm3vr-44uNYZtf/pub?gid=1715832179&single=true&output=csv';
+    let rawData = [];
+    let testKeys = [];
+
+    Papa.parse(csvUrl, {
+        download: true, header: true, dynamicTyping: true, skipEmptyLines: true,
+        complete: function(results) {
+            rawData = results.data;
+            
+            // ปรับปรุงการกรองหัวตาราง: เอาคอลัมน์ที่ไม่ใช่รายการทดสอบออกไปทั้งหมดอย่างเด็ดขาด
+            testKeys = results.meta.fields.filter(h => {
+                const cleanHeader = h.trim().toLowerCase();
+                return cleanHeader !== 'trial' && 
+                       cleanHeader !== 'year' && 
+                       cleanHeader !== 'month' && 
+                       cleanHeader !== 'month - year' && 
+                       cleanHeader !== 'month-year';
+            });
+            
+            setupYearAndTrialFilters();
+            filterData();
+        }
+    });
+
+    function setupYearAndTrialFilters() {
+        const yearSelect = document.getElementById('yearSelect');
+        const years = [...new Set(rawData.map(row => row.Year))].filter(y => y).sort((a,b) => b-a);
+        yearSelect.add(new Option('ทั้งหมด', 'all'));
+        years.forEach(y => yearSelect.add(new Option(y, y)));
+        updateTrialFilter();
+    }
+
+    function updateTrialFilter() {
+        const yearSelect = document.getElementById('yearSelect').value;
+        const trialSelect = document.getElementById('trialSelect');
+        
+        trialSelect.innerHTML = '';
+        trialSelect.add(new Option('ทั้งหมด', 'all'));
+
+        let filteredRows = rawData;
+        if (yearSelect !== 'all') {
+            filteredRows = rawData.filter(row => row.Year == yearSelect);
+        }
+
+        const trials = [...new Set(filteredRows.map(row => row.Trial))].filter(t => t).sort();
+        trials.forEach(t => trialSelect.add(new Option(t, t)));
+
+        filterData();
+    }
+
+    function filterData() {
+        const selectedYear = document.getElementById('yearSelect').value;
+        const selectedTrial = document.getElementById('trialSelect').value;
+        
+        let filtered = rawData;
+        if (selectedYear !== 'all') filtered = filtered.filter(row => row.Year == selectedYear);
+        if (selectedTrial !== 'all') filtered = filtered.filter(row => row.Trial == selectedTrial);
+
+        processData(filtered);
+    }
+
+    function processData(data) {
+        let stats = { total: 0, pass: 0, fail: 0, ex: 0, gd: 0, ac: 0, fl: 0 };
+        let failMap = {};
+
+        data.forEach(row => {
+            testKeys.forEach(key => {
+                const val = row[key];
+                if (val !== null && !isNaN(parseFloat(val))) {
+                    const absVal = Math.abs(val);
+                    stats.total++;
+                    
+                    if (absVal < 2) {
+                        stats.pass++;
+                        if (absVal <= 0.5) stats.ex++;
+                        else if (absVal <= 1.0) stats.gd++;
+                        else stats.ac++;
+                    } else {
+                        stats.fail++;
+                        stats.fl++;
+                        if (!failMap[key]) failMap[key] = { count: 0, trials: [] };
+                        failMap[key].count++;
+                        failMap[key].trials.push(row.Trial);
+                    }
+                }
+            });
+        });
+
+        const passRate = stats.total > 0 ? ((stats.pass / stats.total) * 100).toFixed(1) : 0;
+        const sortedFails = Object.entries(failMap).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+        
+        updateUI(passRate, stats, sortedFails);
+    }
+
+    function updateUI(rate, stats, fails) {
+        document.getElementById('stat-total').innerText = stats.total.toLocaleString();
+        document.getElementById('stat-pass').innerText = stats.pass.toLocaleString();
+        document.getElementById('stat-fail').innerText = stats.fail.toLocaleString();
+        
+        document.getElementById('count-ex').innerText = stats.ex.toLocaleString();
+        document.getElementById('count-gd').innerText = stats.gd.toLocaleString();
+        document.getElementById('count-ac').innerText = stats.ac.toLocaleString();
+        document.getElementById('count-fl').innerText = stats.fl.toLocaleString();
+
+        const circle = document.getElementById('kpi-circle');
+        const circumference = 2 * Math.PI * 80;
+        circle.style.strokeDashoffset = circumference - (rate / 100 * circumference);
+        circle.style.color = rate >= 90 ? 'var(--excellent)' : 'var(--fail)';
+        
+        const pctText = document.getElementById('kpi-percent');
+        pctText.innerText = rate + '%';
+        pctText.style.color = circle.style.color;
+
+        const tbody = document.getElementById('fail-body');
+        tbody.innerHTML = fails.length ? fails.map(([name, d]) => `
+            <tr>
+                <td><b>${name}</b></td>
+                <td style="text-align:center; color:var(--fail); font-weight:bold; font-size: 1.1rem;">${d.count}</td>
+                <td>${[...new Set(d.trials)].map(t => `<span class="trial-tag" onclick="showTrialPopup('${t}')">${t}</span>`).join('')}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--excellent); font-weight:600;">✨ ทุกรายการอยู่ในเกณฑ์มาตรฐาน |SDI| < 2.0</td></tr>';
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+    }
+
+    function toggleModal(show) {
+        const modal = document.getElementById('trialModal');
+        if (show) modal.classList.add('active');
+        else modal.classList.remove('active');
+    }
+
+    function closeModal(e) {
+        if(e.target === document.getElementById('trialModal')) toggleModal(false);
+    }
+
+    function showTrialPopup(trialName) {
+        const trialData = rawData.find(row => row.Trial === trialName);
+        if (!trialData) return;
+
+        document.getElementById('modalTitle').innerText = `📊 รายงานผล Trial: ${trialName}`;
+        let htmlContent = `<div style="margin-bottom: 15px; color: var(--text-sub); font-size:0.9rem;">ปีงบประมาณ / ประจำปี: ${trialData.Year || '-'}</div>`;
+        
+        testKeys.forEach(key => {
+            const val = trialData[key];
+            if (val !== null && !isNaN(parseFloat(val))) {
+                const absVal = Math.abs(val);
+                let colorClass = 'var(--text-main)';
+                let statusBadge = '';
+
+                if (absVal <= 0.5) {
+                    colorClass = 'var(--excellent)';
+                    statusBadge = '<span class="badge bg-ex" style="padding:2px 6px; font-size:0.65rem;">Excellent</span>';
+                } else if (absVal <= 1.0) {
+                    colorClass = 'var(--good)';
+                    statusBadge = '<span class="badge bg-gd" style="padding:2px 6px; font-size:0.65rem;">Good</span>';
+                } else if (absVal < 2.0) {
+                    colorClass = 'var(--acc)';
+                    statusBadge = '<span class="badge bg-ac" style="padding:2px 6px; font-size:0.65rem; color:#fff;">Acceptable</span>';
+                } else {
+                    colorClass = 'var(--fail)';
+                    statusBadge = '<span class="badge bg-fl" style="padding:2px 6px; font-size:0.65rem;">Fail</span>';
+                }
+
+                htmlContent += `
+                    <div class="modal-grid-row">
+                        <span class="test-name">${key} ${statusBadge}</span>
+                        <span class="sdi-val" style="color: ${colorClass};">${val > 0 ? '+'+val.toFixed(2) : val.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        });
+
+        document.getElementById('modalBody').innerHTML = htmlContent;
+        toggleModal(true);
+    }
+</script>
+</body>
+</html>

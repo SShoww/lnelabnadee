@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQAC Quality Monitor - Live Data</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --primary: #3b82f6; /* Blue */
+            --danger: #ef4444; /* Red */
+            --success: #10b981; /* Green */
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            gap: 2.5rem;
+            align-items: stretch;
+            padding: 2rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        /* Section: Circular Gauge */
+        .gauge-section {
+            flex: 1;
+            background: var(--card);
+            padding: 3rem;
+            border-radius: 2rem;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto 1.5rem;
+        }
+
+        svg { transform: rotate(-90deg); width: 250px; height: 250px; }
+        circle { fill: transparent; stroke-width: 18; stroke-linecap: round; }
+        .circle-bg { stroke: #f1f5f9; }
+        .circle-progress {
+            stroke: var(--primary);
+            transition: stroke-dashoffset 1s ease-in-out, stroke 0.5s ease;
+        }
+
+        .percentage-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .percent-num { font-size: 4rem; font-weight: 800; display: block; color: var(--text-main); }
+        .percent-unit { font-size: 1.1rem; color: var(--text-sub); font-weight: 600; }
+
+        /* Section: Top 5 Failures */
+        .ranking-section {
+            flex: 1.2;
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        h2 { font-size: 1.1rem; color: var(--text-main); margin-top: 0; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+        .badge-count { background: var(--danger); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            background: #fdfdfe;
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .rank-item:hover { transform: scale(1.02); }
+        
+        .rank-number { font-weight: 800; color: var(--text-sub); width: 30px; font-size: 1.2rem; }
+        .rank-info { flex-grow: 1; }
+        .rank-name { font-weight: 700; display: block; font-size: 1rem; }
+        .rank-freq { font-size: 0.85rem; color: var(--danger); font-weight: 600; }
+
+        .no-fail { text-align: center; color: var(--success); padding: 3rem; font-weight: 600; }
+
+        /* Dynamic Colors */
+        .alert-mode .circle-progress { stroke: var(--danger); }
+        .alert-mode .percent-num { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-wrapper">
+    <div class="gauge-section" id="gauge-container">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-sub); letter-spacing: 0.15rem; margin-bottom: 1.5rem;">OVERALL PASS RATE</div>
+        <div class="progress-ring">
+            <svg>
+                <circle class="circle-bg" cx="125" cy="125" r="110"></circle>
+                <circle id="progress" class="circle-progress" cx="125" cy="125" r="110" stroke-dasharray="691.15" stroke-dashoffset="691.15"></circle>
+            </svg>
+            <div class="percentage-text">
+                <span class="percent-num" id="pct">0</span>
+                <span class="percent-unit">% PASS</span>
+            </div>
+        </div>
+        <div id="status-label" style="font-weight: 700; font-size: 0.9rem;">CONNECTING...</div>
+    </div>
+
+    <div class="ranking-section">
+        <h2>Top 5 Critical Tests <span class="badge-count">By Failure Count</span></h2>
+        <div id="rank-list">
+            <div style="text-align: center; padding: 2rem; color: var(--text-sub);">Fetching data...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // อัปเดต URL ตามที่คุณระบุ
+    const urls = {
+        tea: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=1789978367&single=true&output=csv',
+        cv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=870055578&single=true&output=csv',
+        bias: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=446342745&single=true&output=csv'
+    };
+
+    async function updateData() {
+        try {
+            // ดึงข้อมูลพร้อมกันทั้ง 3 แหล่ง
+            const [rTea, rBias, rCv] = await Promise.all([
+                fetch(urls.tea).then(r => r.text()),
+                fetch(urls.bias).then(r => r.text()),
+                fetch(urls.cv).then(r => r.text())
+            ]);
+
+            const teaData = parseCSV(rTea);
+            const biasData = parseCSV(rBias);
+            const cvData = parseCSV(rCv);
+
+            let passCount = 0;
+            let totalCount = 0;
+            let failureMap = {};
+
+            // ดึงรายชื่อหัวข้อการทดสอบ (Analytes) โดยข้ามคอลัมน์ Trial และ Month - Year
+            const analytes = Object.keys(teaData[0]).filter(k => k !== 'Trial' && k !== 'Month - Year');
+
+            teaData.forEach((row, idx) => {
+                analytes.forEach(test => {
+                    // ตรวจสอบความถูกต้องของข้อมูลก่อนคำนวณ
+                    const teaVal = parseFloat(teaData[idx][test]);
+                    const bVal = biasData[idx] ? Math.abs(parseFloat(biasData[idx][test])) : NaN;
+                    const cVal = cvData[idx] ? parseFloat(cvData[idx][test]) : NaN;
+
+                    if (!isNaN(teaVal) && !isNaN(bVal) && !isNaN(cVal)) {
+                        totalCount++;
+                        // สูตรคำนวณ Total Error (TE) = |Bias| + 2CV
+                        const currentTE = bVal + (2 * cVal);
+                        
+                        if (currentTE <= teaVal) {
+                            passCount++;
+                        } else {
+                            // เก็บสถิติตัวที่สอบตก
+                            failureMap[test] = (failureMap[test] || 0) + 1;
+                        }
+                    }
+                });
+            });
+
+            const finalPct = totalCount > 0 ? (passCount / totalCount) * 100 : 0;
+            updateUI(finalPct, failureMap);
+
+        } catch (err) {
+            console.error("Data error:", err);
+            document.getElementById('status-label').innerText = "DATA ERROR";
+            document.getElementById('status-label').style.color = "var(--danger)";
+        }
+    }
+
+    function updateUI(score, failureMap) {
+        // อัปเดต Gauge ส่วนกลาง
+        const circle = document.getElementById('progress');
+        const pctTxt = document.getElementById('pct');
+        const container = document.getElementById('gauge-container');
+        const statusLbl = document.getElementById('status-label');
+        
+        const circumference = 2 * Math.PI * 110;
+        circle.style.strokeDashoffset = circumference - (score / 100 * circumference);
+        pctTxt.innerText = score.toFixed(1);
+
+        if (score < 90) {
+            container.classList.add('alert-mode');
+            statusLbl.innerText = "ATTENTION REQUIRED";
+            statusLbl.style.color = "var(--danger)";
+        } else {
+            container.classList.remove('alert-mode');
+            statusLbl.innerText = "EXCELLENT QUALITY";
+            statusLbl.style.color = "var(--success)";
+        }
+
+        // อัปเดตส่วน Ranking อันดับการตก
+        const rankList = document.getElementById('rank-list');
+        const sortedFails = Object.entries(failureMap)
+            .sort((a, b) => b[1] - a[1]) // เรียงจากตกบ่อยสุดไปน้อยสุด
+            .slice(0, 5); // แสดงแค่ Top 5
+
+        if (sortedFails.length === 0) {
+            rankList.innerHTML = '<div class="no-fail">🎉 All tests passed across all trials!</div>';
+            return;
+        }
+
+        rankList.innerHTML = sortedFails.map((item, index) => `
+            <div class="rank-item">
+                <div class="rank-number">#${index + 1}</div>
+                <div class="rank-info">
+                    <span class="rank-name">${item[0]}</span>
+                    <span class="rank-freq">Failed ${item[1]} times</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function parseCSV(csv) {
+        // แยกข้อมูล CSV ออกเป็น Array ของ Object
+        const rows = csv.split('\n').filter(r => r.trim()).map(r => r.split(','));
+        const headers = rows[0].map(h => h.trim());
+        return rows.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((h, i) => obj[h] = row[i] ? row[i].trim() : "");
+            return obj;
+        });
+    }
+
+    // เรียกทำงานครั้งแรก
+    updateData();
+    // ตั้งเวลา Refresh ทุกๆ 5 นาที
+    setInterval(updateData, 300000);
+</script>
+
+</body>
+</html>

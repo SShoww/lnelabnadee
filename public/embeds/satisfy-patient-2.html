@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปความคิดเห็นผู้รับบริการ - โรงพยาบาลนาดี</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; color: #333; }
+        .header-section { background: linear-gradient(135deg, #1a759f, #34a0a4); color: white; padding: 2rem 0; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; height: 100%; }
+        .card:hover { transform: translateY(-5px); }
+        .text-impress { color: #2d6a4f; font-weight: 600; border-left: 4px solid #52b788; padding-left: 10px; }
+        .text-improve { color: #bc4749; font-weight: 600; border-left: 4px solid #ef233c; padding-left: 10px; }
+        .list-group-item { border: none; margin-bottom: 8px; border-radius: 8px !important; background-color: #fff; }
+        .badge-year { font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 20px; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 200px; }
+        .empty-msg { color: #999; font-style: italic; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="header-section text-center">
+    <div class="container">
+        <h1>Dashboard สรุปข้อคิดเห็นผู้รับบริการ</h1>
+        <p>งานเทคนิคการแพทย์ โรงพยาบาลนาดี</p>
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-4">
+                <select id="yearFilter" class="form-select form-select-lg" onchange="filterData()">
+                    <option value="all">เลือกดูทุกปี</option>
+                    <option value="2565">ปี พ.ศ. 2565</option>
+                    <option value="2566">ปี พ.ศ. 2566</option>
+                    <option value="2567">ปี พ.ศ. 2567</option>
+                    <option value="2568">ปี พ.ศ. 2568</option>
+                    <option value="2569">ปี พ.ศ. 2569</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div id="loading" class="loading">
+        <div class="spinner-border text-primary" role="status"></div>
+        <span class="ms-3">กำลังดึงข้อมูลล่าสุดจากระบบ...</span>
+    </div>
+
+    <div id="dashboardContent" style="display: none;">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-white py-3">
+                        <h4 class="text-impress mb-0">❤️ สิ่งที่ท่านประทับใจ</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="impressList" class="list-group"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-white py-3">
+                        <h4 class="text-improve mb-0">🛠️ สิ่งที่ควรปรับปรุง</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="improveList" class="list-group"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRUik4A8mm6FZCBkDDFJC049QRxOtrQg8OHPMCUdjIK2QsIqY_IOgddDwx3FPUS0FcAKZ2Zie8m_tHR/pub?output=csv';
+    let allData = [];
+
+    // ฟังก์ชันตรวจสอบว่าข้อความเป็นข้อความว่างหรือไม่
+    function isValidComment(text) {
+        if (!text) return false;
+        const ignoreWords = ['ไม่มี', 'ไม่มีค่ะ', 'ไม่มีครับ', '-', '..', '...', 'ไม่มีข้อเสนอแนะ'];
+        const cleanText = text.trim();
+        return cleanText.length > 1 && !ignoreWords.includes(cleanText);
+    }
+
+    // ฟังก์ชันแปลงปี พ.ศ. จาก Timestamp
+    function getThaiYear(dateString) {
+        try {
+            const dateParts = dateString.split('/');
+            const year = parseInt(dateParts[2].split(',')[0]);
+            // ตรวจสอบว่าปีเป็น ค.ศ. หรือ พ.ศ. (ถ้า < 2500 แสดงว่าเป็น ค.ศ.)
+            return year < 2500 ? (year + 543).toString() : year.toString();
+        } catch (e) {
+            return "ไม่ระบุ";
+        }
+    }
+
+    async function fetchData() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                allData = results.data;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                filterData();
+            },
+            error: function(err) {
+                alert('ไม่สามารถโหลดข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Publish ของ Google Sheets');
+            }
+        });
+    }
+
+    function filterData() {
+        const selectedYear = document.getElementById('yearFilter').value;
+        const impressList = document.getElementById('impressList');
+        const improveList = document.getElementById('improveList');
+        
+        impressList.innerHTML = '';
+        improveList.innerHTML = '';
+
+        let countImpress = 0;
+        let countImprove = 0;
+
+        allData.forEach(row => {
+            const timestamp = row['ประทับเวลา'];
+            if (!timestamp) return;
+
+            const thaiYear = getThaiYear(timestamp);
+            const impressText = row['สิ่งที่ท่านประทับใจ ที่ท่านได้รับการบริการ คือ'];
+            const improveText = row['สิ่งที่ท่านคิดว่า ควรมีการปรับปรุง ที่เกี่ยวกับการบริการ คือ'];
+
+            // กรองตามปี
+            if (selectedYear === 'all' || thaiYear === selectedYear) {
+                
+                // แสดงสิ่งที่ประทับใจ
+                if (isValidComment(impressText)) {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action shadow-sm';
+                    item.innerHTML = `<small class="text-muted">ปี ${thaiYear}</small><br>${impressText}`;
+                    impressList.appendChild(item);
+                    countImpress++;
+                }
+
+                // แสดงสิ่งที่ควรปรับปรุง
+                if (isValidComment(improveText)) {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action shadow-sm';
+                    item.innerHTML = `<small class="text-muted">ปี ${thaiYear}</small><br>${improveText}`;
+                    improveList.appendChild(item);
+                    countImprove++;
+                }
+            }
+        });
+
+        if (countImpress === 0) impressList.innerHTML = '<div class="empty-msg">ไม่มีข้อมูลความประทับใจในช่วงเวลานี้</div>';
+        if (countImprove === 0) improveList.innerHTML = '<div class="empty-msg">ไม่มีข้อมูลข้อเสนอแนะในช่วงเวลานี้</div>';
+    }
+
+    // เริ่มต้นโหลดข้อมูล
+    fetchData();
+</script>
+
+</body>
+</html>

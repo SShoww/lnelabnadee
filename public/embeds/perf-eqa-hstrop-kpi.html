@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQA hs-TropT Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --bg-body: #f4f7f9;
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            padding: 30px 15px; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: #333;
+        }
+
+        .dashboard-card { 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            padding: 25px; 
+            height: 100%; 
+            border: none;
+            transition: transform 0.2s;
+        }
+
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+
+        .chart-container { 
+            position: relative; 
+            height: 240px; 
+            width: 240px; 
+            margin: 0 auto; 
+        }
+
+        .percentage-label { 
+            position: absolute; 
+            top: 55%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 2rem; 
+            font-weight: 800; 
+            color: var(--primary-color); 
+        }
+
+        .list-warning { 
+            color: #664d03; 
+            background-color: #fff8e1; 
+            border-radius: 12px; 
+            padding: 12px 15px; 
+            margin-bottom: 10px; 
+            font-size: 0.95rem; 
+            border-left: 6px solid var(--warning-color); 
+        }
+
+        .list-fail { 
+            color: #842029; 
+            background-color: #f8d7da; 
+            border-radius: 12px; 
+            padding: 12px 15px; 
+            margin-bottom: 10px; 
+            font-size: 0.95rem; 
+            border-left: 6px solid var(--danger-color); 
+        }
+
+        .empty-state { 
+            color: #adb5bd; 
+            font-style: italic; 
+            text-align: center;
+            padding: 20px;
+        }
+
+        .table-responsive {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table thead {
+            background-color: #f8f9fa;
+        }
+
+        .table th {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            padding: 12px;
+        }
+
+        .badge-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        h5.title-icon {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-primary">EQA Performance Dashboard</h2>
+        <p class="text-muted">Analyte: hs-TropT | Laboratory Monitoring System</p>
+    </div>
+
+    <div class="filter-section">
+        <div class="row g-3 align-items-center justify-content-center">
+            <div class="col-auto">
+                <span class="fw-bold"><i class="fa-solid fa-filter me-2"></i>เลือกช่วง Trial:</span>
+            </div>
+            <div class="col-md-3">
+                <select id="startTrial" class="form-select border-primary" onchange="updateDashboard()"></select>
+            </div>
+            <div class="col-auto text-muted">ถึง</div>
+            <div class="col-md-3">
+                <select id="endTrial" class="form-select border-primary" onchange="updateDashboard()"></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4 col-md-12">
+            <div class="dashboard-card text-center">
+                <h5 class="fw-bold title-icon justify-content-center">
+                    <i class="fa-solid fa-chart-pie text-primary"></i> Pass Rate
+                </h5>
+                <div class="chart-container">
+                    <canvas id="donutChart"></canvas>
+                    <div id="passPercent" class="percentage-label">--%</div>
+                </div>
+                <div class="mt-4">
+                    <span class="badge bg-light text-dark p-2 px-3 rounded-pill" id="summaryCount">Total: -- Trials</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="dashboard-card">
+                <h5 class="fw-bold title-icon text-danger">
+                    <i class="fa-solid fa-circle-exclamation"></i> Fail (%Dev > 30)
+                </h5>
+                <div id="failList" class="mb-4"></div>
+                
+                <hr class="my-4 opacity-50">
+
+                <h5 class="fw-bold title-icon text-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Warning (SDI > 2.5)
+                </h5>
+                <div id="warningList"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="dashboard-card">
+                <h5 class="fw-bold title-icon">
+                    <i class="fa-solid fa-table-list text-secondary"></i> Detailed Data
+                </h5>
+                <div class="table-responsive" style="max-height: 420px;">
+                    <table class="table table-hover align-middle">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th>Trial</th>
+                                <th class="text-center">SDI</th>
+                                <th class="text-center">%Dev</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // URL CSV ใหม่ที่ระบุ GID 536364881
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdZF5NSj449rMZTUobOMvS89LqmVWOcC-6D58h9PVEVhKMwAfa5JdBXANqbe12AiQWp1OWrQgmPx9P/pub?gid=536364881&single=true&output=csv';
+    let rawData = [];
+    let donutChart = null;
+
+    async function init() {
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                // กรองข้อมูลเฉพาะแถวที่มีค่า Trial
+                rawData = results.data.filter(row => row.Trial && row.Trial.trim() !== "");
+                setupFilters(rawData);
+                updateDashboard();
+            },
+            error: function(err) {
+                console.error("Error loading CSV:", err);
+            }
+        });
+    }
+
+    function setupFilters(data) {
+        const s = document.getElementById('startTrial');
+        const e = document.getElementById('endTrial');
+        s.innerHTML = ''; e.innerHTML = '';
+        
+        data.forEach(r => {
+            s.add(new Option(r.Trial, r.Trial));
+            e.add(new Option(r.Trial, r.Trial));
+        });
+        
+        s.selectedIndex = 0;
+        e.selectedIndex = data.length - 1;
+    }
+
+    function updateDashboard() {
+        const start = document.getElementById('startTrial').value;
+        const end = document.getElementById('endTrial').value;
+        
+        const sIdx = rawData.findIndex(r => r.Trial == start);
+        const eIdx = rawData.findIndex(r => r.Trial == end);
+        
+        const startIdx = Math.min(sIdx, eIdx);
+        const endIdx = Math.max(sIdx, eIdx);
+        
+        const filtered = rawData.slice(startIdx, endIdx + 1);
+
+        renderDonut(filtered);
+        renderAlerts(filtered);
+        renderTable(filtered);
+    }
+
+    function renderDonut(data) {
+        const total = data.length;
+        if (total === 0) return;
+
+        const passed = data.filter(r => Math.abs(parseFloat(r['%Dev'])) < 30).length;
+        const failed = total - passed;
+        const percent = ((passed / total) * 100).toFixed(1);
+
+        document.getElementById('passPercent').textContent = percent + '%';
+        document.getElementById('summaryCount').innerHTML = `<i class="fa-solid fa-vial me-1"></i> Total: <b>${total}</b> Trials`;
+
+        const ctx = document.getElementById('donutChart').getContext('2d');
+        if (donutChart) donutChart.destroy();
+        
+        donutChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pass', 'Fail'],
+                datasets: [{
+                    data: [passed, failed],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    hoverOffset: 4,
+                    borderWidth: 0,
+                    cutout: '82%'
+                }]
+            },
+            options: { 
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw} Trials`;
+                            }
+                        }
+                    }
+                },
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    function renderAlerts(data) {
+        const failDiv = document.getElementById('failList');
+        const warnDiv = document.getElementById('warningList');
+        failDiv.innerHTML = ''; warnDiv.innerHTML = '';
+
+        const fails = data.filter(r => Math.abs(parseFloat(r['%Dev'])) >= 30);
+        const warns = data.filter(r => Math.abs(parseFloat(r.SDI)) > 2.5);
+
+        if(fails.length === 0) {
+            failDiv.innerHTML = '<div class="empty-state">ไม่มีรายการตกเกณฑ์ (All Passed)</div>';
+        } else {
+            fails.forEach(r => {
+                failDiv.innerHTML += `<div class="list-fail"><b>Trial ${r.Trial}</b><br><small>%Dev = ${r['%Dev']}%</small></div>`;
+            });
+        }
+
+        if(warns.length === 0) {
+            warnDiv.innerHTML = '<div class="empty-state">ไม่มีรายการ Warning</div>';
+        } else {
+            warns.forEach(r => {
+                warnDiv.innerHTML += `<div class="list-warning"><b>Trial ${r.Trial}</b><br><small>SDI = ${r.SDI}</small></div>`;
+            });
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('dataTable');
+        tbody.innerHTML = '';
+        
+        // เรียงข้อมูลล่าสุดขึ้นก่อนในตาราง (Optional)
+        const displayData = [...data].reverse();
+
+        displayData.forEach(r => {
+            const dev = parseFloat(r['%Dev']);
+            const sdi = parseFloat(r.SDI);
+            const isFail = Math.abs(dev) >= 30;
+            const isWarn = Math.abs(sdi) > 2.5;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-secondary">${r.Trial}</td>
+                    <td class="text-center ${isWarn ? 'text-warning fw-bold' : ''}">
+                        ${isNaN(sdi) ? '-' : sdi}
+                    </td>
+                    <td class="text-center ${isFail ? 'text-danger fw-bold' : ''}">
+                        ${isNaN(dev) ? '-' : dev + '%'}
+                    </td>
+                </tr>`;
+        });
+    }
+
+    // เริ่มต้นทำงาน
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thyroid EQA KPI Dashboard (z-score 2.0)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --success: #2ecc71; --warning: #f39c12; --danger: #e74c3c; --primary: #2c3e50; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .dashboard { max-width: 1200px; margin: auto; display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .panel-left { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; height: fit-content; }
+        .donut-container { position: relative; margin: 20px auto; width: 250px; }
+        .donut-label { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; }
+        .pct-main { font-size: 32px; font-weight: bold; display: block; color: var(--primary); }
+        .n-total { font-size: 14px; color: #7f8c8d; }
+        .panel-right { display: flex; flex-direction: column; gap: 20px; }
+        .filter-card { background: var(--primary); color: white; padding: 20px; border-radius: 15px; display: flex; gap: 15px; align-items: center; justify-content: center; }
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .stat-card { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 5px solid #ddd; transition: 0.3s; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .table-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th { background: #f8f9fa; color: #7f8c8d; padding: 12px; border-bottom: 2px solid #eee; }
+        td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+        .kpi-good { color: var(--success) !important; border-top-color: var(--success) !important; }
+        .kpi-bad { color: var(--danger) !important; border-top-color: var(--danger) !important; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        .badge-pass { background: #e9f7ef; color: #27ae60; }
+        .badge-fail { background: #fdedec; color: #e74c3c; }
+        select, button { padding: 10px 15px; border-radius: 8px; border: none; font-size: 14px; }
+        button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2980b9; }
+        .dev-text { font-size: 11px; color: #95a5a6; display: block; }
+        @media (max-width: 900px) { .dashboard { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="panel-left">
+        <h2 style="margin-top:0; color: var(--primary);">Overall KPI</h2>
+        <div class="donut-container">
+            <canvas id="donutChart"></canvas>
+            <div class="donut-label">
+                <span id="overall-pct" class="pct-main">--%</span>
+                <span id="overall-n" class="n-total">N = 0</span>
+            </div>
+        </div>
+        <p id="kpi-status" style="font-weight:bold; font-size: 18px;"></p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <div style="text-align:left; font-size: 13px; color: #666; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+            <strong style="display:block; margin-bottom:5px;">เกณฑ์การประเมินใหม่:</strong>
+            <li style="margin-bottom:3px;">ผ่านรายตัว: <b>|z-score| < 2.0</b></li>
+            <li style="margin-bottom:3px;">เป้าหมายรวม: KPI > 90%</li>
+        </div>
+    </div>
+
+    <div class="panel-right">
+        <div class="filter-card">
+            <span>ช่วง Trial:</span>
+            <select id="sTrial"><option>Loading...</option></select>
+            <span>ถึง</span>
+            <select id="eTrial"><option>Loading...</option></select>
+            <button onclick="calculateAll()">อัปเดตข้อมูล</button>
+        </div>
+
+        <div class="stats-row">
+            <div id="card-FT3" class="stat-card">
+                <div style="color:#7f8c8d; font-weight: 600;">Free T3</div>
+                <div id="val-FT3" style="font-size:28px; font-weight:bold; margin: 5px 0;">--%</div>
+                <div id="n-FT3" style="font-size:12px; color:#95a5a6;">N=0</div>
+            </div>
+            <div id="card-FT4" class="stat-card">
+                <div style="color:#7f8c8d; font-weight: 600;">Free T4</div>
+                <div id="val-FT4" style="font-size:28px; font-weight:bold; margin: 5px 0;">--%</div>
+                <div id="n-FT4" style="font-size:12px; color:#95a5a6;">N=0</div>
+            </div>
+            <div id="card-TSH" class="stat-card">
+                <div style="color:#7f8c8d; font-weight: 600;">TSH</div>
+                <div id="val-TSH" style="font-size:28px; font-weight:bold; margin: 5px 0;">--%</div>
+                <div id="n-TSH" style="font-size:12px; color:#95a5a6;">N=0</div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h3 style="margin-top:0; color: var(--primary);">สรุปผลการวิเคราะห์ราย Trial</h3>
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>Trial</th>
+                        <th>Free T3 (z | %Dev)</th>
+                        <th>Free T4 (z | %Dev)</th>
+                        <th>TSH (z | %Dev)</th>
+                        <th>สถานะสรุป</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // URL CSV จาก Google Sheets ของคุณ
+    const SOURCES = {
+        FT3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScT7Y75zRAXfrCn3Yc3B2Yn7f4_3g9_WEi9Eh0Wx8HDj0IxqXro1JUOVhL8RNBaxcj80YAbixMzOjN/pub?gid=456676818&single=true&output=csv',
+        FT4: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScT7Y75zRAXfrCn3Yc3B2Yn7f4_3g9_WEi9Eh0Wx8HDj0IxqXro1JUOVhL8RNBaxcj80YAbixMzOjN/pub?gid=66720880&single=true&output=csv',
+        TSH: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScT7Y75zRAXfrCn3Yc3B2Yn7f4_3g9_WEi9Eh0Wx8HDj0IxqXro1JUOVhL8RNBaxcj80YAbixMzOjN/pub?gid=1545865813&single=true&output=csv'
+    };
+
+    let dataStore = { FT3: [], FT4: [], TSH: [] };
+    let donutChart = null;
+
+    async function init() {
+        const fetcher = (url) => new Promise(res => Papa.parse(url, {
+            download: true, header: true, skipEmptyLines: true,
+            transformHeader: h => h.trim(),
+            complete: r => res(r.data)
+        }));
+
+        try {
+            const [d3, d4, ds] = await Promise.all([fetcher(SOURCES.FT3), fetcher(SOURCES.FT4), fetcher(SOURCES.TSH)]);
+            const sortByTrial = (arr) => arr.sort((a, b) => parseFloat(a.Trial) - parseFloat(b.Trial));
+            
+            dataStore.FT3 = sortByTrial(d3);
+            dataStore.FT4 = sortByTrial(d4);
+            dataStore.TSH = sortByTrial(ds);
+
+            const trials = dataStore.FT3.map(d => d.Trial).filter(d => d);
+            const s = document.getElementById('sTrial');
+            const e = document.getElementById('eTrial');
+            s.innerHTML = ''; e.innerHTML = '';
+            
+            trials.forEach((t, i) => {
+                s.add(new Option(t, t));
+                e.add(new Option(t, t));
+                if(i === trials.length - 1) e.selectedIndex = i;
+            });
+            calculateAll();
+        } catch (err) { console.error("Load failed", err); }
+    }
+
+    function calculateAll() {
+        const start = document.getElementById('sTrial').value;
+        const end = document.getElementById('eTrial').value;
+        const getSlice = (data) => {
+            let i1 = data.findIndex(d => d.Trial === start);
+            let i2 = data.findIndex(d => d.Trial === end);
+            const [s, e] = i1 <= i2 ? [i1, i2] : [i2, i1];
+            return data.slice(s, e + 1);
+        };
+
+        const slices = { FT3: getSlice(dataStore.FT3), FT4: getSlice(dataStore.FT4), TSH: getSlice(dataStore.TSH) };
+        const results = { FT3: { n: 0, p: 0 }, FT4: { n: 0, p: 0 }, TSH: { n: 0, p: 0 } };
+        let tableRows = '';
+
+        slices.FT3.forEach(tRow => {
+            const t = tRow.Trial;
+            let rowHTML = `<td><strong>${t}</strong></td>`;
+            let trialPass = true;
+            let itemsCount = 0;
+
+            ['FT3', 'FT4', 'TSH'].forEach(key => {
+                const item = slices[key].find(d => d.Trial === t) || {};
+                const z = parseFloat(item['z-score']);
+                const dev = parseFloat(item['%Dev']);
+                const isReady = !isNaN(z);
+                
+                // แก้ไขเกณฑ์ตรงนี้เป็น 2.0
+                const isPass = isReady && Math.abs(z) < 2.0;
+
+                if(isReady) {
+                    itemsCount++;
+                    results[key].n++;
+                    if(isPass) results[key].p++; else trialPass = false;
+                }
+                
+                rowHTML += `<td class="${isReady && !isPass ? 'kpi-bad' : ''}">
+                    ${isReady ? z.toFixed(2) : '-'} <br>
+                    <span class="dev-text">(${!isNaN(dev) ? dev.toFixed(1)+'%' : '-'})</span>
+                </td>`;
+            });
+
+            const finalStatus = itemsCount > 0 && trialPass;
+            rowHTML += `<td><span class="badge ${finalStatus ? 'badge-pass' : 'badge-fail'}">${finalStatus ? 'PASS' : 'FAIL'}</span></td>`;
+            tableRows += `<tr>${rowHTML}</tr>`;
+        });
+
+        document.querySelector('#resultTable tbody').innerHTML = tableRows;
+
+        let totalN = 0, totalP = 0;
+        ['FT3', 'FT4', 'TSH'].forEach(key => {
+            const pct = results[key].n > 0 ? (results[key].p / results[key].n * 100) : 0;
+            document.getElementById(`val-${key}`).innerText = pct.toFixed(1) + '%';
+            document.getElementById(`n-${key}`).innerText = `N = ${results[key].n}`;
+            document.getElementById(`card-${key}`).className = `stat-card ${pct >= 90 ? 'kpi-good' : 'kpi-bad'}`;
+            totalN += results[key].n; totalP += results[key].p;
+        });
+
+        const overallPct = totalN > 0 ? (totalP / totalN * 100) : 0;
+        updateDonut(overallPct, totalN);
+    }
+
+    function updateDonut(pct, n) {
+        document.getElementById('overall-pct').innerText = pct.toFixed(1) + '%';
+        document.getElementById('overall-n').innerText = `Total Tests: ${n}`;
+        const statusEl = document.getElementById('kpi-status');
+        statusEl.innerText = pct >= 90 ? "ผ่านเกณฑ์เป้าหมาย" : "ต่ำกว่าเกณฑ์เป้าหมาย";
+        statusEl.style.color = pct >= 90 ? "var(--success)" : "var(--danger)";
+
+        if(donutChart) donutChart.destroy();
+        donutChart = new Chart(document.getElementById('donutChart'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [pct, 100 - pct],
+                    backgroundColor: [pct >= 90 ? '#2ecc71' : '#e74c3c', '#ecf0f1'],
+                    borderWidth: 0
+                }]
+            },
+            options: { cutout: '80%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>

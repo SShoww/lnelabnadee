@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sigma Dashboard - Clean Data Only</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 1100px; margin: auto; }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-family: 'Kanit';
+            outline: none;
+        }
+
+        .dashboard-wrapper {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .top-panels {
+            display: flex;
+            gap: 50px;
+        }
+
+        .left-panel { flex: 1; text-align: center; border-right: 1px solid #eee; padding-right: 40px; }
+        .right-panel { flex: 1; }
+
+        .bottom-panel {
+            border-top: 1px solid #eee;
+            padding-top: 30px;
+        }
+
+        .chart-container { position: relative; width: 250px; height: 250px; margin: auto; }
+        .line-chart-container { position: relative; width: 100%; height: 300px; margin-top: 15px; }
+        .kpi-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .kpi-value { font-size: 3.5rem; font-weight: bold; line-height: 1; }
+        
+        .test-list { list-style: none; padding: 0; }
+        .test-item {
+            background: #fff5f5;
+            border-left: 4px solid var(--danger-color);
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #data-status {
+            font-size: 0.85rem;
+            color: #e67e22;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        @media (max-width: 768px) {
+            .top-panels { flex-direction: column; gap: 20px; }
+            .left-panel { border-right: none; border-bottom: 1px solid #eee; padding-right: 0; padding-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="filter-section">
+        <label>ช่วงข้อมูล:</label>
+        <select id="startMonth"></select>
+        <span>ถึง</span>
+        <select id="endMonth"></select>
+        <button onclick="applyFilter()" style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 10px; cursor: pointer;">ประมวลผล</button>
+    </div>
+
+    <div class="dashboard-wrapper">
+        <div class="top-panels">
+            <div class="left-panel">
+                <h2>Overall Quality</h2>
+                <div id="data-status"></div>
+                <div id="loading">กำลังดึงข้อมูล...</div>
+                <div id="chart-content" style="display:none;">
+                    <div class="chart-container">
+                        <canvas id="sigmaDonut"></canvas>
+                        <div class="kpi-overlay">
+                            <span class="kpi-value" id="percentText">0</span><br>
+                            <span style="color:#95a5a6">% ผ่านเกณฑ์</span>
+                        </div>
+                    </div>
+                    <p id="totalCount" style="color:#95a5a6; margin-top:15px;"></p>
+                </div>
+            </div>
+
+            <div class="right-panel" id="improvement-content" style="display:none;">
+                <h3>Tests to Improve (Sigma < 4)</h3>
+                <ul class="test-list" id="bad-tests-list"></ul>
+            </div>
+        </div>
+
+        <div class="bottom-panel" id="trend-content" style="display:none;">
+            <h3>Trend of Pass Rate (%) by Trial</h3>
+            <div class="line-chart-container">
+                <canvas id="sigmaLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const urls = {
+        tea: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=1789978367&single=true&output=csv',
+        bias: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=446342745&single=true&output=csv',
+        cv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTl5LFgoVYsSVJGDq95K8tr5ZDfjjnVfCpGrGCfhJ7ck939HYD47F4l5TcPDsbNF7Q6PSCPiZJnbyBd/pub?gid=870055578&single=true&output=csv'
+    };
+
+    let rawData = { tea: [], bias: [], cv: [] };
+    let chartInstance = null;
+    let lineChartInstance = null;
+
+    async function init() {
+        try {
+            const results = await Promise.all(Object.values(urls).map(url => 
+                new Promise((res, rej) => Papa.parse(url, {download:true, header:true, dynamicTyping:true, complete:res, error:rej}))
+            ));
+            
+            rawData.tea = results[0].data;
+            rawData.bias = results[1].data;
+            rawData.cv = results[2].data;
+
+            // ดึงรายชื่อรอบ/Trial ทั้งหมดที่มีอยู่จริงในไฟล์
+            const trials = rawData.tea.map(r => r[Object.keys(r)[0]]).filter(t => t !== null && t !== undefined && t !== "");
+            
+            const start = document.getElementById('startMonth');
+            const end = document.getElementById('endMonth');
+            
+            start.innerHTML = '';
+            end.innerHTML = '';
+
+            trials.forEach((t, i) => {
+                // กำหนด value เป็นค่า Trial จริงๆ (เช่น "340", "356") ไม่ใช้ index 0,1,2 แล้ว
+                start.innerHTML += `<option value="${t}">${t}</option>`;
+                end.innerHTML += `<option value="${t}" ${i === trials.length-1 ? 'selected' : ''}>${t}</option>`;
+            });
+            
+            applyFilter();
+        } catch (e) {
+            document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
+        }
+    }
+
+    function applyFilter() {
+        const startVal = document.getElementById('startMonth').value;
+        const endVal = document.getElementById('endMonth').value;
+        
+        // ค้นหาตำแหน่ง Index จริงของตัวเลือกที่เลือก เพื่อเช็คว่าเริ่มต้นชิ้นไหน มาก่อน/หลัง
+        const trials = rawData.tea.map(r => String(r[Object.keys(r)[0]]));
+        const startIndex = trials.indexOf(String(startVal));
+        const endIndex = trials.indexOf(String(endVal));
+
+        if(startIndex > endIndex) {
+            alert("รอบเริ่มต้นต้องไม่มากกว่ารอบสิ้นสุด");
+            return;
+        }
+
+        analyze(startIndex, endIndex);
+    }
+
+    function analyze(startIndex, endIndex) {
+        let totalRecords = 0;
+        let passRecords = 0;
+        let skippedRows = 0;
+        let failureMap = {};
+        
+        let lineLabels = [];
+        let lineData = [];
+
+        // ลูปตามตำแหน่ง index ที่กรองจากช่วงข้อมูลจริง
+        for (let i = startIndex; i <= endIndex; i++) {
+            const tRow = rawData.tea[i];
+            const bRow = rawData.bias[i];
+            const cRow = rawData.cv[i];
+
+            if(!tRow || !bRow || !cRow) {
+                skippedRows++;
+                continue;
+            }
+
+            const trialLabel = tRow[Object.keys(tRow)[0]];
+            if (trialLabel === null || trialLabel === undefined || trialLabel === "") continue;
+
+            let rowTotal = 0;
+            let rowPass = 0;
+            let rowHasData = false;
+
+            const keys = Object.keys(tRow).filter(k => !k.toLowerCase().includes('trial') && !k.toLowerCase().includes('month') && k !== Object.keys(tRow)[0]);
+            
+            keys.forEach(key => {
+                const tea = tRow[key];
+                const bias = bRow[key];
+                const cv = cRow[key];
+
+                if (tea === null || tea === undefined || bias === null || cv === null || cv === 0 || isNaN(tea)) {
+                    return; 
+                }
+
+                const sigma = (tea - Math.abs(bias)) / cv;
+                totalRecords++;
+                rowTotal++;
+                
+                if (sigma >= 4) {
+                    passRecords++;
+                    rowPass++;
+                } else {
+                    failureMap[key] = (failureMap[key] || 0) + 1;
+                }
+                
+                rowHasData = true;
+            });
+
+            if (!rowHasData) {
+                skippedRows++;
+            } else {
+                const rowRate = rowTotal > 0 ? Math.round((rowPass / rowTotal) * 100) : 0;
+                lineLabels.push(String(trialLabel));
+                lineData.push(rowRate);
+            }
+        }
+
+        const rate = totalRecords > 0 ? Math.round((passRecords / totalRecords) * 100) : 0;
+        document.getElementById('data-status').innerText = skippedRows > 0 ? `* ข้ามข้อมูลที่ไม่สมบูรณ์ไป ${skippedRows} แถว` : '';
+        
+        updateUI(rate, totalRecords, Object.entries(failureMap).sort((a,b) => b[1]-a[1]).slice(0, 5), lineLabels, lineData);
+    }
+
+    function updateUI(rate, total, badTests, lineLabels, lineData) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('chart-content').style.display = 'block';
+        document.getElementById('improvement-content').style.display = 'block';
+        document.getElementById('trend-content').style.display = 'block';
+        
+        const color = rate < 80 ? '#e74c3c' : '#2ecc71';
+        document.getElementById('percentText').innerText = rate;
+        document.getElementById('percentText').style.color = color;
+        document.getElementById('totalCount').innerText = `รวมวิเคราะห์ ${total} รายการ (เฉพาะที่ข้อมูลครบ)`;
+
+        const listEl = document.getElementById('bad-tests-list');
+        listEl.innerHTML = badTests.length > 0 ? '' : '<li>ทุกรายการอยู่ในเกณฑ์ดีเยี่ยม</li>';
+        badTests.forEach(([name, count]) => {
+            listEl.innerHTML += `<li class="test-item"><span style="font-weight:600">${name}</span><span>พบปัญหา ${count} ครั้ง</span></li>`;
+        });
+
+        // 1. กราฟวงกลม Donut
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById('sigmaDonut'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [rate, 100 - rate],
+                    backgroundColor: [color, '#f0f0f0'],
+                    borderWidth: 0,
+                    borderRadius: 10
+                }]
+            },
+            options: { cutout: '82%', plugins: { tooltip: { enabled: false } } }
+        });
+
+        // 2. กราฟเส้น Trend Line
+        if(lineChartInstance) lineChartInstance.destroy();
+        lineChartInstance = new Chart(document.getElementById('sigmaLineChart'), {
+            type: 'line',
+            data: {
+                labels: lineLabels,
+                datasets: [{
+                    label: '% ผ่านเกณฑ์',
+                    data: lineData,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.2,
+                    fill: true,
+                    pointBackgroundColor: '#3498db',
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) { return value + '%'; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    init();
+</script>
+
+</body>
+</html>

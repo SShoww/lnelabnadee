@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microbilirubin IQC Real-time Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; margin: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #1a73e8; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 0.9em; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+        .chart-box { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 10px; position: relative; }
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; font-size: 0.85em; }
+        th { background-color: #f8f9fa; color: #333; }
+        .status-pass { color: #28a745; font-weight: bold; background: #e8f5e9; padding: 4px 8px; border-radius: 4px; }
+        .status-fail { color: #dc3545; font-weight: bold; background: #ffebee; padding: 4px 8px; border-radius: 4px; }
+        .loading { text-align: center; padding: 20px; color: #1a73e8; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Microbilirubin IQC Dashboard</h2>
+    <div class="subtitle">เชื่อมโยงข้อมูลแบบ Real-time จาก Google Sheets</div>
+    <div id="loading" class="loading">⏳ กำลังซิงค์ข้อมูล...</div>
+    
+    <div class="grid">
+        <div class="chart-box">
+            <canvas id="chartL1"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="chartL2"></canvas>
+        </div>
+    </div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>วัน-เวลา</th>
+                <th>Level 1 (Result)</th>
+                <th>Level 2 (Result)</th>
+                <th>ผู้ตรวจ</th>
+                <th>สถานะตัดสิน (±2SD)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    // ลิงก์ CSV จาก Google Sheets ของคุณ
+    const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR--LWLvGhwLVZeggQTNzLNsweUs6GIehOcQaL96G3sKiFAvoum6hg8Z_PDgyPuChkb-KChj3LIA4Xq/pub?output=csv';
+
+    // --- ค่า Mean และ SD ที่คุณกำหนด ---
+    const config = {
+        L1: { mean: 8.0, sd: 0.35 },
+        L2: { mean: 17.9, sd: 0.6 }
+    };
+
+    function validate(val, target) {
+        if (isNaN(val)) return false;
+        const ucl = target.mean + (2 * target.sd);
+        const lcl = target.mean - (2 * target.sd);
+        return val >= lcl && val <= ucl;
+    }
+
+    async function init() {
+        Papa.parse(sheetUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                processData(results.data);
+                document.getElementById('loading').style.display = 'none';
+            },
+            error: function() {
+                document.getElementById('loading').innerText = '❌ ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Publish to Web';
+            }
+        });
+    }
+
+    function processData(data) {
+        // กรองแถวที่ไม่มีข้อมูลประทับเวลา
+        const cleanData = data.filter(row => row['ประทับเวลา']);
+        
+        const labels = cleanData.map(row => row['ประทับเวลา']);
+        const valsL1 = cleanData.map(row => parseFloat(row['ค่า Control Level 1']));
+        const valsL2 = cleanData.map(row => parseFloat(row['ค่า Control Level 2']));
+
+        renderChart('chartL1', 'Level 1 (Target: 8.0)', labels, valsL1, config.L1);
+        renderChart('chartL2', 'Level 2 (Target: 17.9)', labels, valsL2, config.L2);
+        updateTable(cleanData);
+    }
+
+    function renderChart(id, title, labels, points, target) {
+        const mean = target.mean;
+        const ucl = mean + (2 * target.sd);
+        const lcl = mean - (2 * target.sd);
+
+        new Chart(document.getElementById(id), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: title,
+                    data: points,
+                    borderColor: '#1a73e8',
+                    backgroundColor: 'rgba(26, 115, 232, 0.05)',
+                    fill: true,
+                    tension: 0.2,
+                    pointBackgroundColor: points.map(v => validate(v, target) ? '#1a73e8' : '#d93025'),
+                    pointBorderColor: points.map(v => validate(v, target) ? '#1a73e8' : '#d93025'),
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            meanLine: { type: 'line', yMin: mean, yMax: mean, borderColor: '#28a745', borderDash: [5, 5], label: { display: true, content: 'Mean', position: 'end' } },
+                            uclLine: { type: 'line', yMin: ucl, yMax: ucl, borderColor: '#dc3545', borderDash: [2, 2], label: { display: true, content: '+2SD', position: 'start' } },
+                            lclLine: { type: 'line', yMin: lcl, yMax: lcl, borderColor: '#dc3545', borderDash: [2, 2], label: { display: true, content: '-2SD', position: 'start' } }
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        min: Math.min(lcl, ...points.filter(p=>!isNaN(p))) - 0.5,
+                        max: Math.max(ucl, ...points.filter(p=>!isNaN(p))) + 0.5
+                    },
+                    x: { display: false } // ปิดชื่อแกน X เพื่อความสะอาด (ดูเวลาในตารางแทน)
+                }
+            }
+        });
+    }
+
+    function updateTable(data) {
+        const tbody = document.querySelector('#dataTable tbody');
+        tbody.innerHTML = '';
+        // แสดงข้อมูลล่าสุดไว้ด้านบนสุด (Reverse)
+        [...data].reverse().forEach(row => {
+            const l1 = parseFloat(row['ค่า Control Level 1']);
+            const l2 = parseFloat(row['ค่า Control Level 2']);
+            const isL1Pass = validate(l1, config.L1);
+            const isL2Pass = validate(l2, config.L2);
+            const overallPass = isL1Pass && isL2Pass;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td>${row['ประทับเวลา']}</td>
+                    <td style="color:${isL1Pass?'#333':'red'}">${l1}</td>
+                    <td style="color:${isL2Pass?'#333':'red'}">${l2}</td>
+                    <td>${row['ผู้ทำการทดสอบ']}</td>
+                    <td><span class="${overallPass ? 'status-pass' : 'status-fail'}">${overallPass ? 'ผ่าน' : 'ไม่ผ่าน'}</span></td>
+                </tr>`;
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>
