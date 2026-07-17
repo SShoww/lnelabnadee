@@ -110,16 +110,6 @@ function AppsScriptPanel({ url, title }) {
         </div>
       </div>
 
-      {/* Embedded frame underneath */}
-      <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
-        <iframe
-          src={url}
-          title={title}
-          className="w-full h-full border-0"
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-        />
-      </div>
     </div>
   )
 }

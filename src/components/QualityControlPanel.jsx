@@ -18,7 +18,7 @@ const allEmbeds = {
 // copy-pasteable doGet fix code, deployment steps,
 // and the live iframe underneath (Double-Experience Layout)
 // ──────────────────────────────────────────────
-function AppsScriptPanel({ url, title }) {
+function AppsScriptPanel({ url, title, hideIframe }) {
   const [copied, setCopied] = useState(false)
   const [openAdmin, setOpenAdmin] = useState(false)
 
@@ -122,15 +122,17 @@ function AppsScriptPanel({ url, title }) {
       </div>
 
       {/* Embedded frame underneath */}
-      <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
-        <iframe
-          src={url}
-          title={title}
-          className="w-full h-full border-0"
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-        />
-      </div>
+      {!hideIframe && (
+        <div className="relative rounded-xl overflow-hidden border dark:border-slate-700/50 light:border-slate-200 bg-white h-[600px] shadow-md">
+          <iframe
+            src={url}
+            title={title}
+            className="w-full h-full border-0"
+            allow="fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -173,11 +175,11 @@ function DriveFolderGrid({ links }) {
 // ──────────────────────────────────────────────
 // EmbedSlot — renders single URL as iframe or AppsScript double experience panel
 // ──────────────────────────────────────────────
-function EmbedSlot({ url, title }) {
+function EmbedSlot({ url, title, hideIframe }) {
   const isAppsScript = url.includes('script.google.com')
 
   if (isAppsScript) {
-    return <AppsScriptPanel url={url} title={title} />
+    return <AppsScriptPanel url={url} title={title} hideIframe={hideIframe} />
   }
 
   return (
@@ -316,11 +318,12 @@ export default function QualityControlPanel({ pageId: propPageId }) {
               key={idx}
               url={url}
               title={`${embedConfig.title} Part ${idx + 1}`}
+              hideIframe={pageId === 'poct-dtx-rphst'}
             />
           ))}
         </div>
       ) : isFirstUrlAppsScript ? (
-        <AppsScriptPanel url={firstUrl} title={embedConfig.title} />
+        <AppsScriptPanel url={firstUrl} title={embedConfig.title} hideIframe={pageId === 'poct-dtx-rphst'} />
       ) : (
         <div className="relative flex-1 min-h-[600px] rounded-xl overflow-hidden
           dark:border dark:border-slate-700/50 light:border light:border-slate-200
